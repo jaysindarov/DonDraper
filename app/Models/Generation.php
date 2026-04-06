@@ -16,6 +16,9 @@ class Generation extends Model
         'status',
         'prompt',
         'negative_prompt',
+        'product_type',
+        'product_image_path',
+        'reference_persons',
         'model',
         'provider',
         'attributes',
@@ -36,6 +39,7 @@ class Generation extends Model
         return [
             'attributes' => 'array',
             'metadata' => 'array',
+            'reference_persons' => 'array',
         ];
     }
 

@@ -1,6 +1,7 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
     generation: Object,
@@ -13,15 +14,35 @@ const statusConfig = {
     failed: { color: 'text-rose-400', bg: 'bg-rose-400/10 border-rose-500/30', label: 'Failed' },
 }
 
-const status = statusConfig[props.generation.status] || statusConfig.pending
+const status = computed(() => statusConfig[props.generation.status] || statusConfig.pending)
+const isInProgress = computed(() => ['pending', 'processing'].includes(props.generation.status))
 
-const downloadImage = async () => {
-    if (!props.generation.result_url) return
-    const a = document.createElement('a')
-    a.href = props.generation.result_url
-    a.download = `dondraper-${props.generation.id}.png`
-    a.target = '_blank'
-    a.click()
+let pollInterval = null
+
+onMounted(() => {
+    if (isInProgress.value) {
+        pollInterval = setInterval(() => {
+            router.reload({ only: ['generation'], preserveScroll: true })
+        }, 3000)
+    }
+})
+
+onUnmounted(() => {
+    if (pollInterval) clearInterval(pollInterval)
+})
+
+// Stop polling once job finishes
+const stopPollingWhenDone = () => {
+    if (!isInProgress.value && pollInterval) {
+        clearInterval(pollInterval)
+        pollInterval = null
+    }
+}
+
+router.on('finish', stopPollingWhenDone)
+
+const downloadImage = () => {
+    window.location.href = route('generations.download', props.generation.id)
 }
 </script>
 
@@ -35,6 +56,7 @@ const downloadImage = async () => {
                 </Link>
                 <h2 class="text-xl font-bold text-white">Generation #{{ generation.id }}</h2>
                 <span :class="['text-xs px-2.5 py-1 rounded-full border font-medium', status.bg, status.color]">{{ status.label }}</span>
+                <span v-if="isInProgress" class="text-xs text-gray-500 animate-pulse">Auto-refreshing...</span>
             </div>
         </template>
 
@@ -83,6 +105,38 @@ const downloadImage = async () => {
                         <div v-if="generation.negative_prompt" class="mt-4">
                             <h3 class="text-sm font-semibold text-gray-400 mb-2">Negative Prompt</h3>
                             <p class="text-gray-400 text-sm">{{ generation.negative_prompt }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Reference People -->
+                    <div v-if="generation.reference_persons?.length" class="bg-gray-900/50 border border-emerald-500/20 rounded-2xl p-6">
+                        <h3 class="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                            <span>🧑‍🤝‍🧑</span> Reference People
+                        </h3>
+                        <div class="flex gap-4">
+                            <div v-for="person in generation.reference_persons" :key="person.path" class="flex flex-col items-center gap-2">
+                                <img :src="`/storage/${person.path}`" :alt="person.name"
+                                    class="w-20 h-20 object-cover rounded-xl border border-white/10" />
+                                <span class="text-xs text-gray-400 text-center">{{ person.name }}</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-3">Analyzed with GPT-4o Vision · Generated with gpt-image-1 edits endpoint</p>
+                    </div>
+
+                    <!-- Product Reference -->
+                    <div v-if="generation.product_type || generation.product_image_path" class="bg-gray-900/50 border border-violet-500/20 rounded-2xl p-6">
+                        <h3 class="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                            <span>📦</span> Product Reference
+                        </h3>
+                        <div class="flex items-start gap-4">
+                            <img v-if="generation.product_image_path"
+                                :src="`/storage/${generation.product_image_path}`"
+                                alt="Product"
+                                class="w-20 h-20 object-cover rounded-xl border border-white/10 flex-shrink-0" />
+                            <div>
+                                <div v-if="generation.product_type" class="text-sm font-medium text-violet-300 mb-1">{{ generation.product_type }}</div>
+                                <p class="text-xs text-gray-500">GPT-4o Vision analyzed this product and incorporated it into the generation prompt.</p>
+                            </div>
                         </div>
                     </div>
 
