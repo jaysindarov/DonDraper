@@ -35,6 +35,13 @@ const plans = [
     { name: 'Enterprise', price: '$79', period: '/month', credits: 'Unlimited', features: ['Unlimited generations', 'All Pro features', 'Custom models', 'Dedicated support', 'Team workspace', 'SLA guarantee'], cta: 'Contact Sales', highlighted: false },
 ]
 
+const creditExamples = [
+    { credits: 10, images: 10, label: 'Free Starter', badge: 'Free', color: 'from-gray-500 to-gray-600' },
+    { credits: 20, images: 20, label: 'Top-up Pack', badge: 'Flexible', color: 'from-blue-500 to-cyan-500' },
+    { credits: 100, images: 100, label: 'Power User', badge: 'Popular', color: 'from-violet-500 to-fuchsia-500' },
+    { credits: 500, images: 500, label: 'Pro Monthly', badge: 'Pro', color: 'from-emerald-500 to-teal-500' },
+]
+
 const isScrolled = ref(false)
 const activeStyle = ref(0)
 const styleShowcase = [
@@ -220,6 +227,72 @@ onMounted(() => {
                         <Link :href="route('register')" :class="['block text-center font-bold py-3 rounded-2xl transition-all', plan.highlighted ? 'bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 shadow-lg shadow-violet-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10']">
                             {{ plan.cta }}
                         </Link>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How Credits Work -->
+        <section class="py-32 px-6">
+            <div class="max-w-5xl mx-auto">
+                <div class="text-center mb-16">
+                    <h2 class="text-5xl font-black mb-4">How <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">Credits</span> Work</h2>
+                    <p class="text-xl text-gray-400 max-w-2xl mx-auto">Simple, transparent pricing. 1 credit = 1 image. No hidden fees, no complicated tiers.</p>
+                </div>
+
+                <!-- Credit rule -->
+                <div class="flex items-center justify-center gap-6 mb-14 flex-wrap">
+                    <div class="flex items-center gap-4 bg-gray-900/70 border border-white/10 rounded-2xl px-8 py-5 backdrop-blur-sm">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 border border-amber-400/30 flex items-center justify-center text-2xl">🪙</div>
+                        <div>
+                            <div class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">1 Credit</div>
+                            <div class="text-gray-400 text-sm mt-0.5">per generation</div>
+                        </div>
+                        <div class="text-3xl text-gray-600 mx-2">=</div>
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-400/20 to-fuchsia-500/20 border border-violet-400/30 flex items-center justify-center text-2xl">🖼️</div>
+                        <div>
+                            <div class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">1 Image</div>
+                            <div class="text-gray-400 text-sm mt-0.5">any style, any model</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Credit examples grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-14">
+                    <div v-for="ex in creditExamples" :key="ex.credits"
+                        class="relative bg-gray-900/60 border border-white/5 hover:border-white/15 rounded-2xl p-6 text-center transition-all hover:-translate-y-1 backdrop-blur-sm group">
+                        <div :class="`absolute top-3 right-3 text-xs font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${ex.color} text-white`">{{ ex.badge }}</div>
+                        <div :class="`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r ${ex.color} mb-1`">{{ ex.credits }}</div>
+                        <div class="text-xs text-gray-500 uppercase tracking-wider mb-3">credits</div>
+                        <div class="w-full h-px bg-white/5 mb-3"></div>
+                        <div class="text-2xl font-bold text-white mb-1">{{ ex.images }}</div>
+                        <div class="text-xs text-gray-400">images generated</div>
+                        <div class="text-xs text-gray-600 mt-2">{{ ex.label }}</div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="flex items-start gap-3 bg-gray-900/40 border border-white/5 rounded-xl p-5">
+                        <span class="text-xl mt-0.5">🎁</span>
+                        <div>
+                            <div class="font-semibold text-sm mb-1">Free on Signup</div>
+                            <div class="text-xs text-gray-400">Every new account gets 10 credits instantly — no credit card required.</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 bg-gray-900/40 border border-white/5 rounded-xl p-5">
+                        <span class="text-xl mt-0.5">⚡</span>
+                        <div>
+                            <div class="font-semibold text-sm mb-1">Deducted on Submit</div>
+                            <div class="text-xs text-gray-400">1 credit is deducted when you submit a generation request, before the AI processes it.</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 bg-gray-900/40 border border-white/5 rounded-xl p-5">
+                        <span class="text-xl mt-0.5">🔄</span>
+                        <div>
+                            <div class="font-semibold text-sm mb-1">Monthly Refresh</div>
+                            <div class="text-xs text-gray-400">Pro and Enterprise plans refresh credits every billing cycle. Unused credits don't roll over.</div>
+                        </div>
                     </div>
                 </div>
             </div>
