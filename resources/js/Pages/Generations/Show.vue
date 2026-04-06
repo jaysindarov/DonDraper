@@ -23,7 +23,7 @@ onMounted(() => {
     if (isInProgress.value) {
         pollInterval = setInterval(() => {
             router.reload({ only: ['generation'], preserveScroll: true })
-        }, 3000)
+        }, pollMs.value)
     }
 })
 
@@ -41,9 +41,14 @@ const stopPollingWhenDone = () => {
 
 router.on('finish', stopPollingWhenDone)
 
-const downloadImage = () => {
+const isVideo = computed(() => props.generation.type === 'video')
+
+const download = () => {
     window.location.href = route('generations.download', props.generation.id)
 }
+
+// Video polling interval — videos take longer, poll every 5s
+const pollMs = computed(() => isVideo.value ? 5000 : 3000)
 </script>
 
 <template>
@@ -62,37 +67,58 @@ const downloadImage = () => {
 
         <div class="py-8 px-6 max-w-6xl mx-auto">
             <div class="grid lg:grid-cols-2 gap-8">
-                <!-- Image Display -->
+                <!-- Result Display (Image or Video) -->
                 <div class="space-y-4">
-                    <div class="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 border border-white/5 relative">
-                        <img v-if="generation.result_url" :src="generation.result_url" :alt="generation.prompt" class="w-full h-full object-cover" />
-                        <div v-else class="w-full h-full flex flex-col items-center justify-center gap-4">
-                            <div v-if="generation.status === 'processing' || generation.status === 'pending'">
-                                <svg class="w-16 h-16 text-violet-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <div :class="['rounded-3xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 border border-white/5 relative', isVideo ? 'aspect-video' : 'aspect-square']">
+
+                        <!-- VIDEO player -->
+                        <video v-if="isVideo && generation.result_url"
+                            :src="generation.result_url"
+                            controls
+                            loop
+                            playsinline
+                            class="w-full h-full object-contain bg-black"
+                        ></video>
+
+                        <!-- IMAGE -->
+                        <img v-else-if="!isVideo && generation.result_url"
+                            :src="generation.result_url"
+                            :alt="generation.prompt"
+                            class="w-full h-full object-cover" />
+
+                        <!-- Loading / failed states -->
+                        <div v-else class="w-full h-full flex flex-col items-center justify-center gap-4 p-6">
+                            <div v-if="isInProgress" class="text-center">
+                                <svg class="w-16 h-16 text-violet-400 animate-spin mx-auto" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
-                                <p class="text-sm text-gray-400 mt-4 text-center">AI is working on your image...</p>
+                                <p class="text-sm text-gray-400 mt-4">
+                                    {{ isVideo ? 'Video is being generated — this can take a few minutes...' : 'AI is generating your image...' }}
+                                </p>
+                                <p v-if="isVideo" class="text-xs text-gray-600 mt-2">
+                                    The page will auto-update when ready.
+                                </p>
                             </div>
-                            <div v-else-if="generation.status === 'failed'" class="text-center px-6">
+                            <div v-else-if="generation.status === 'failed'" class="text-center">
                                 <div class="text-5xl mb-4">❌</div>
                                 <p class="text-rose-400 font-medium mb-2">Generation Failed</p>
-                                <p v-if="generation.error_message" class="text-xs text-gray-500">{{ generation.error_message }}</p>
+                                <p v-if="generation.error_message" class="text-xs text-gray-500 max-w-sm">{{ generation.error_message }}</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Actions -->
                     <div v-if="generation.result_url" class="flex gap-3">
-                        <button @click="downloadImage"
+                        <button @click="download"
                             class="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-violet-500/25">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                            Download
+                            Download {{ isVideo ? 'MP4' : 'PNG' }}
                         </button>
                         <Link :href="route('generations.create')"
                             class="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold py-3 px-5 rounded-xl transition-all">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Regenerate
+                            New
                         </Link>
                     </div>
                 </div>

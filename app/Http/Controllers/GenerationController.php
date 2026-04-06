@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\VideoProvider;
 use App\Jobs\ProcessImageGeneration;
+use App\Jobs\ProcessVideoGeneration;
 use App\Models\Generation;
 use App\Models\GenerationAttribute;
 use Illuminate\Http\Request;
@@ -27,15 +29,22 @@ class GenerationController extends Controller
 
     public function create(): Response
     {
-        $attributes = GenerationAttribute::where('is_active', true)
-            ->where('applicable_to', 'image')
+        $imageAttributes = GenerationAttribute::where('is_active', true)
+            ->whereIn('applicable_to', ['image', 'both'])
+            ->orderBy('sort_order')
+            ->get()
+            ->groupBy('category');
+
+        $videoAttributes = GenerationAttribute::where('is_active', true)
+            ->whereIn('applicable_to', ['video', 'both'])
             ->orderBy('sort_order')
             ->get()
             ->groupBy('category');
 
         return Inertia::render('Generations/Create', [
-            'attributes' => $attributes,
-            'credits' => auth()->user()->credits,
+            'imageAttributes' => $imageAttributes,
+            'videoAttributes' => $videoAttributes,
+            'credits'         => auth()->user()->credits,
         ]);
     }
 
@@ -54,10 +63,14 @@ class GenerationController extends Controller
             'person_2_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
-        $user = auth()->user();
+        $user        = auth()->user();
+        $isVideo     = $validated['type'] === 'video';
+        $creditCost  = $isVideo ? 5 : 1;
 
-        if ($user->credits < 1) {
-            return back()->withErrors(['credits' => 'Insufficient credits. Please upgrade your plan.']);
+        if ($user->credits < $creditCost) {
+            return back()->withErrors([
+                'credits' => "Insufficient credits. This generation costs {$creditCost} credits.",
+            ]);
         }
 
         // Store product image
@@ -80,23 +93,35 @@ class GenerationController extends Controller
             }
         }
 
+        $attributes = $validated['attributes'] ?? [];
+
+        // Determine provider from the selected model
+        $model    = $attributes['model'] ?? ($isVideo ? 'veo-3.1' : 'gpt-image-1');
+        $provider = $isVideo
+            ? VideoProvider::fromModel($model)->value
+            : 'openai';
+
         $generation = $user->generations()->create([
-            'type'              => $validated['type'],
-            'prompt'            => $validated['prompt'],
-            'negative_prompt'   => $validated['negative_prompt'] ?? null,
-            'product_type'      => $validated['product_type'] ?? null,
-            'product_image_path'=> $productImagePath,
-            'reference_persons' => !empty($referencePersons) ? $referencePersons : null,
-            'model'             => $validated['attributes']['model'] ?? 'gpt-image-1',
-            'provider'          => 'openai',
-            'attributes'        => $validated['attributes'] ?? [],
-            'status'            => 'pending',
-            'credits_used'      => 1,
+            'type'               => $validated['type'],
+            'prompt'             => $validated['prompt'],
+            'negative_prompt'    => $validated['negative_prompt'] ?? null,
+            'product_type'       => $validated['product_type'] ?? null,
+            'product_image_path' => $productImagePath,
+            'reference_persons'  => !empty($referencePersons) ? $referencePersons : null,
+            'model'              => $model,
+            'provider'           => $provider,
+            'attributes'         => $attributes,
+            'status'             => 'pending',
+            'credits_used'       => $creditCost,
         ]);
 
-        $user->deductCredits(1);
+        $user->deductCredits($creditCost);
 
-        ProcessImageGeneration::dispatch($generation);
+        if ($isVideo) {
+            ProcessVideoGeneration::dispatch($generation)->onQueue('video');
+        } else {
+            ProcessImageGeneration::dispatch($generation);
+        }
 
         return redirect()->route('generations.show', $generation)
             ->with('success', 'Generation started! Your image will be ready shortly.');

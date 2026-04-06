@@ -4,7 +4,8 @@ import { ref, computed, watch } from 'vue'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
-    attributes: Object,
+    imageAttributes: Object,
+    videoAttributes: Object,
     credits: Number,
 })
 
@@ -60,9 +61,13 @@ const clearPerson = (n) => {
     else { form.person_2_image = null; form.person_2_name = ''; person2Preview.value = null; showPerson2.value = false }
 }
 
-// Initialize defaults from attributes
+// Initialize defaults from both attribute sets
 const initDefaults = () => {
-    Object.values(props.attributes).flat().forEach(attr => {
+    const allAttrs = [
+        ...Object.values(props.imageAttributes).flat(),
+        ...Object.values(props.videoAttributes).flat(),
+    ]
+    allAttrs.forEach(attr => {
         if (attr.default_value !== null && attr.default_value !== undefined) {
             form.attributes[attr.key] = attr.default_value
         }
@@ -71,14 +76,27 @@ const initDefaults = () => {
 initDefaults()
 
 const activeTab = ref('basic')
-const tabs = [
-    { key: 'basic', label: 'Basic', icon: '🎯' },
-    { key: 'style', label: 'Style', icon: '🎨' },
-    { key: 'quality', label: 'Quality', icon: '💎' },
+const imageTabs = [
+    { key: 'basic',    label: 'Basic',    icon: '🎯' },
+    { key: 'style',    label: 'Style',    icon: '🎨' },
+    { key: 'quality',  label: 'Quality',  icon: '💎' },
     { key: 'advanced', label: 'Advanced', icon: '⚙️' },
 ]
+const videoTabs = [
+    { key: 'basic',   label: 'Basic',  icon: '🎯' },
+    { key: 'style',   label: 'Style',  icon: '🎨' },
+    { key: 'quality', label: 'Quality', icon: '💎' },
+]
 
-const currentTabAttributes = computed(() => props.attributes[activeTab.value] || [])
+const tabs = computed(() => form.type === 'video' ? videoTabs : imageTabs)
+
+const currentTabAttributes = computed(() => {
+    const source = form.type === 'video' ? props.videoAttributes : props.imageAttributes
+    return source[activeTab.value] || []
+})
+
+const creditCost = computed(() => form.type === 'video' ? 5 : 1)
+const estimatedTime = computed(() => form.type === 'video' ? '2–10 min' : '~30 sec')
 
 const promptSuggestions = [
     'A majestic dragon soaring over a neon-lit cyberpunk city at night',
@@ -138,12 +156,12 @@ const submit = () => {
                                         <div class="text-xs opacity-60">1 credit</div>
                                     </div>
                                 </button>
-                                <button type="button" @click="form.type = 'video'"
+                                <button type="button" @click="form.type = 'video'; activeTab = 'basic'"
                                     :class="['flex items-center gap-3 p-4 rounded-xl border-2 transition-all', form.type === 'video' ? 'border-fuchsia-500 bg-fuchsia-500/10 text-white' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20']">
                                     <span class="text-2xl">🎬</span>
                                     <div class="text-left">
                                         <div class="font-semibold text-sm">Video</div>
-                                        <div class="text-xs opacity-60">5 credits</div>
+                                        <div class="text-xs opacity-60">5 credits · 2–10 min</div>
                                     </div>
                                 </button>
                             </div>
@@ -436,17 +454,24 @@ const submit = () => {
                                 {{ form.errors.credits }}
                             </div>
 
+                            <!-- Video time notice -->
+                            <div v-if="form.type === 'video'" class="bg-fuchsia-500/5 border border-fuchsia-500/20 rounded-xl p-3 mb-3 text-xs text-fuchsia-300 flex items-start gap-2">
+                                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Video generation takes 2–10 minutes. You'll see a live status update on the result page.
+                            </div>
+
                             <button
                                 type="submit"
-                                :disabled="form.processing || !form.prompt || credits === 0"
+                                :disabled="form.processing || !form.prompt || credits < creditCost"
                                 class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02]"
                             >
                                 <svg v-if="form.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
+                                <svg v-else-if="form.type === 'video'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
                                 <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
-                                {{ form.processing ? 'Generating...' : 'Generate (1 credit)' }}
+                                {{ form.processing ? 'Submitting...' : `Generate (${creditCost} credits · ${estimatedTime})` }}
                             </button>
 
                             <p class="text-center text-xs text-gray-600 mt-3">

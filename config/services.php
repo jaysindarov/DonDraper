@@ -36,8 +36,18 @@ return [
     ],
 
     'openai' => [
-        'key' => env('OPENAI_API_KEY'),
+        'key'      => env('OPENAI_API_KEY'),
         'base_url' => 'https://api.openai.com/v1',
+    ],
+
+    'elevenlabs' => [
+        'key' => env('ELEVENLABS_API_KEY'),
+    ],
+
+    'google' => [
+        'api_key'    => env('GOOGLE_AI_API_KEY'),
+        'project_id' => env('GOOGLE_CLOUD_PROJECT_ID'),
+        'location'   => env('GOOGLE_CLOUD_LOCATION', 'us-central1'),
     ],
 
     'anthropic' => [
