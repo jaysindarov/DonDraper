@@ -1,58 +1,140 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# DonDraper — AI Image & Video Generation Platform
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+DonDraper is a full-stack AI creative platform built with **Laravel 12**, **Vue 3 (Inertia.js)**, and **Tailwind CSS**. It lets authenticated users generate images using OpenAI's DALL-E models (with Stable Diffusion and Flux support planned), with fine-grained control over style, quality, and advanced generation parameters — all powered by a credit-based system.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Tech Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Layer | Technology |
+|---|---|
+| Backend | Laravel 12 (PHP) |
+| Frontend | Vue 3 + Inertia.js (SPA-style, no separate API) |
+| Styling | Tailwind CSS |
+| Auth | Laravel Breeze (session-based, email verification ready) |
+| Queue | Laravel Jobs (`ProcessImageGeneration`) |
+| Image AI | OpenAI DALL-E 3 / DALL-E 2 (via HTTP, no SDK dependency) |
+| Database | SQLite (local dev) — swappable to MySQL/Postgres |
+| SSR | Inertia SSR (`ssr.js`) configured |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## What's Been Built
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Authentication
+- Full auth flow: Register, Login, Logout, Password Reset, Email Verification, Password Confirm
+- Profile management: update name/email, change password, delete account
+- Standard Laravel Breeze setup with Vue 3 components
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Credit System
+- Every user starts with **10 free credits** on registration (`default: 10` in migration)
+- Each image generation costs **1 credit**
+- Credits are deducted atomically via `User::deductCredits()` before the job is dispatched
+- If a user has 0 credits, generation is blocked with a validation error
+- Credit balance is visible on the Dashboard and on the Create Generation page
+- Three plan tiers defined in the landing page (not yet enforced by a billing system):
+  - **Starter** — Free, 10 credits/month
+  - **Pro** — $19/month, 500 credits/month
+  - **Enterprise** — $79/month, Unlimited
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### Image Generation
+- **`GenerationController`** handles CRUD: `index`, `create`, `store`, `show`, `destroy`
+- **`ProcessImageGeneration`** job (async queue): calls OpenAI Images API, updates generation status (`pending → processing → completed/failed`)
+- Job retries: 3 attempts, 120s timeout
+- Supported models (seeded, selectable by user): `dall-e-3`, `dall-e-2`, `stable-diffusion-xl`, `stable-diffusion-3`, `flux-pro`, `flux-dev`
+- Provider field tracks source: `openai`, `stability`, `replicate` (only OpenAI wired up currently)
+- Soft deletes on generations
 
-## Agentic Development
+### Generation Attributes (Dynamic Parameters)
+Stored in the `generation_attributes` table and seeded via `GenerationAttributeSeeder`. These are loaded dynamically into the Create form, grouped by category:
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+| Category | Attributes |
+|---|---|
+| **Basic** | Aspect Ratio, Resolution (256×256 → 1792×1024) |
+| **Style** | Art Style (14 options), Lighting (8 options), Color Palette (8 options), Mood & Atmosphere (9 options), Camera Angle (7 options) |
+| **Quality** | Quality (Standard / HD / Ultra HD), Detail Level (1–10), Sharpness (1–10) |
+| **Advanced** | Diffusion Steps (10–150), Guidance Scale/CFG (1–20), Seed (reproducibility), AI Model selector |
 
-```bash
-composer require laravel/boost --dev
+Attributes support field types: `select`, `range`, `text`, `toggle`, `color`.
 
-php artisan boost:install
+### Database Schema
+- **`users`** — standard auth fields + `credits` (int, default 10), `avatar` (nullable), `plan` (string, default `free`)
+- **`generations`** — `user_id`, `type` (image/video), `status`, `prompt`, `negative_prompt`, `model`, `provider`, `attributes` (JSON), `result_url`, `thumbnail_url`, `width`, `height`, `steps`, `guidance_scale`, `seed`, `credits_used`, `error_message`, `metadata` (JSON), soft deletes
+- **`generation_attributes`** — `key`, `label`, `type`, `category`, `options` (JSON), `default_value`, `min`, `max`, `step`, `description`, `applicable_to`, `sort_order`, `is_active`
+
+### Pages (Vue/Inertia)
+- **`Welcome.vue`** — Public landing page: hero, features, style showcase, how-it-works, testimonials, pricing, CTA, footer
+- **`Dashboard.vue`** — Stats (total generations, completed, credit balance) + recent generations grid
+- **`Generations/Create.vue`** — Prompt input, negative prompt, attribute panel (grouped by category), credit cost indicator
+- **`Generations/Index.vue`** — Paginated gallery of user's generations with status badges
+- **`Generations/Show.vue`** — Single generation view with result image and metadata
+- **`Profile/Edit.vue`** — Profile info, password change, account deletion
+
+### Authorization
+- `GenerationPolicy` — users can only view and delete their own generations
+
+### Routes
+```
+GET  /                         → Welcome (public)
+GET  /dashboard                → Dashboard (auth + verified)
+GET  /generations              → Gallery index
+GET  /generations/create       → Create form
+POST /generations              → Store + dispatch job
+GET  /generations/{id}         → Show result
+DELETE /generations/{id}       → Delete
+GET|PATCH|DELETE /profile      → Profile management
++ Full auth routes (login, register, password reset, email verify)
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## Credit System — How It Works
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Action | Credit Cost |
+|---|---|
+| Generate 1 image | 1 credit |
+| Generate 1 video *(planned)* | 5 credits (TBD) |
 
-## Code of Conduct
+**Examples:**
+- 10 credits → 10 image generations (Starter / Free tier)
+- 20 credits → 20 image generations
+- 100 credits → 100 image generations
+- 500 credits → 500 image generations (Pro tier)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Credits are deducted at the point of submission. If the generation job fails, credits are **not** automatically refunded (refund logic is a planned enhancement).
 
-## Security Vulnerabilities
+---
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Local Setup
 
-## License
+```bash
+git clone <repo>
+cd DonDraper
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Set OPENAI_API_KEY in .env
+# services.openai.key is read in ProcessImageGeneration job
+
+php artisan migrate --seed
+php artisan queue:work      # required for async generation
+npm run dev
+php artisan serve
+```
+
+---
+
+## What's Not Built Yet (Planned)
+
+- Video generation (schema + routes exist, job not wired)
+- Billing / payment integration (Stripe) for plan upgrades
+- Credit top-up / purchase flow
+- Credit refund on failed generations
+- API access (token-based, for Pro plan)
+- Admin panel
+- Public/community gallery
+- Team workspace (Enterprise)
+- Stable Diffusion / Flux provider wiring (only DALL-E is active)
+- AI prompt enhancer
