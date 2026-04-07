@@ -6,7 +6,6 @@ use App\Enums\VideoProvider;
 use App\Jobs\ProcessImageGeneration;
 use App\Jobs\ProcessVideoGeneration;
 use App\Models\Generation;
-use App\Models\GenerationAttribute;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -29,29 +28,37 @@ class GenerationController extends Controller
 
     public function create(): Response
     {
-        $imageAttributes = GenerationAttribute::where('is_active', true)
-            ->whereIn('applicable_to', ['image', 'both'])
-            ->orderBy('sort_order')
-            ->get()
-            ->groupBy('category');
+        $imageModels = collect(config('ai_models'))
+            ->map(fn ($cfg, $id) => [
+                'id'          => $id,
+                'label'       => $cfg['label'],
+                'provider'    => $cfg['provider'],
+                'description' => $cfg['description'],
+                'recommended' => $cfg['recommended'] ?? false,
+            ])
+            ->values();
 
-        $videoAttributes = GenerationAttribute::where('is_active', true)
-            ->whereIn('applicable_to', ['video', 'both'])
-            ->orderBy('sort_order')
-            ->get()
-            ->groupBy('category');
+        $videoModels = collect([
+            ['id' => 'veo-3.1',        'label' => 'Veo 3.1',        'provider' => 'Google',    'description' => 'Google Veo 3.1. Cinematic quality video.',       'recommended' => true],
+            ['id' => 'sora-1',         'label' => 'Sora',           'provider' => 'OpenAI',    'description' => 'OpenAI Sora. Creative, high-fidelity video.',    'recommended' => false],
+            ['id' => 'elevenlabs-video','label' => 'ElevenLabs',    'provider' => 'ElevenLabs','description' => 'ElevenLabs video generation with audio support.', 'recommended' => false],
+        ]);
 
         return Inertia::render('Generations/Create', [
-            'imageAttributes' => $imageAttributes,
-            'videoAttributes' => $videoAttributes,
-            'credits'         => auth()->user()->credits,
+            'credits'     => auth()->user()->credits,
+            'imageModels' => $imageModels,
+            'videoModels' => $videoModels,
         ]);
     }
 
     public function store(Request $request)
     {
+        $validImageModels = array_keys(config('ai_models'));
+        $validVideoModels = ['veo-3.1', 'sora-1', 'elevenlabs-video'];
+
         $validated = $request->validate([
             'type'               => 'required|in:image,video',
+            'model'              => 'nullable|string',
             'prompt'             => 'required|string|max:2000',
             'negative_prompt'    => 'nullable|string|max:1000',
             'attributes'         => 'nullable|array',
@@ -98,8 +105,14 @@ class GenerationController extends Controller
 
         $attributes = $validated['attributes'] ?? [];
 
-        // Determine provider from the selected model
-        $model    = $attributes['model'] ?? ($isVideo ? 'veo-3.1' : 'gpt-image-1');
+        // Resolve and validate the selected model
+        $requestedModel = $validated['model'] ?? null;
+        if ($isVideo) {
+            $model = in_array($requestedModel, $validVideoModels) ? $requestedModel : 'veo-3.1';
+        } else {
+            $model = in_array($requestedModel, $validImageModels) ? $requestedModel : 'gpt-image-1';
+        }
+
         $provider = $isVideo
             ? VideoProvider::fromModel($model)->value
             : 'openai';

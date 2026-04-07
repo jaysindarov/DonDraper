@@ -2,7 +2,6 @@
 
 namespace App\Services\ImageGeneration\Providers;
 
-use App\Contracts\ImageGenerationProvider;
 use App\Exceptions\NonRetryableException;
 use App\Models\Generation;
 use App\Services\ImageGeneration\GenerationResult;
@@ -10,12 +9,10 @@ use App\Services\ImageGeneration\ImageStorageService;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Handles DALL-E 2 and DALL-E 3 image generation.
- *
- * Both models use the generations endpoint and return a temporary URL;
- * the image is downloaded and stored locally before returning.
+ * Handles DALL-E 3 image generation via the OpenAI generations endpoint.
+ * Returns a temporary URL which is downloaded and stored locally.
  */
-class OpenAiDallEProvider implements ImageGenerationProvider
+class OpenAiDallEProvider extends BaseImageProvider
 {
     public function __construct(
         private readonly ImageStorageService $storage,
@@ -50,24 +47,12 @@ class OpenAiDallEProvider implements ImageGenerationProvider
             'Content-Type'  => 'application/json',
         ])->timeout(90)->post(config('services.openai.base_url') . '/images/generations', $payload);
 
-        if ($response->status() === 400) {
-            throw new NonRetryableException(
-                'OpenAI rejected request: ' . ($response->json('error.message') ?? $response->body())
-            );
-        }
-
-        if ($response->status() === 429 || $response->status() >= 500) {
-            throw new \RuntimeException('OpenAI temporary error (' . $response->status() . ')');
-        }
-
-        if ($response->failed()) {
-            throw new NonRetryableException('DALL-E error: ' . $response->body());
-        }
+        $this->assertHttpSuccess($response, "DALL-E ({$model})");
 
         $url = $response->json('data.0.url');
 
         if (empty($url)) {
-            throw new NonRetryableException('DALL-E returned empty URL');
+            throw new NonRetryableException("DALL-E ({$model}) returned empty URL");
         }
 
         $localUrl = $this->storage->storeFromUrl($generation->id, $url);

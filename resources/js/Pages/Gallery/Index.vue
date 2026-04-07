@@ -1,14 +1,12 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import { ref, computed } from 'vue'
+import { Head, Link, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
     generations: Object,
     filters: Object,
 })
-
-const page = usePage()
-const authUser = computed(() => page.props.auth?.user ?? null)
 
 const typeFilter = ref(props.filters?.type ?? '')
 
@@ -116,35 +114,15 @@ function meaningfulAttrs(attrs) {
 <template>
     <Head title="Community Gallery — DonDraper" />
 
-    <div class="min-h-screen bg-gray-950 text-white">
-        <!-- Header -->
-        <header class="border-b border-white/5 px-6 py-4 flex items-center justify-between">
-            <Link :href="route('home')" class="text-xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-                DonDraper
-            </Link>
-            <div class="flex items-center gap-4">
-                <template v-if="authUser">
-                    <Link :href="route('dashboard')" class="text-sm text-gray-400 hover:text-white transition-colors">Dashboard</Link>
-                    <Link :href="route('generations.create')" class="text-sm bg-violet-600 hover:bg-violet-500 text-white px-4 py-1.5 rounded-lg transition-all">
-                        New Generation
-                    </Link>
-                </template>
-                <template v-else>
-                    <Link :href="route('login')" class="text-sm text-gray-400 hover:text-white transition-colors">Sign in</Link>
-                    <Link :href="route('register')" class="text-sm bg-violet-600 hover:bg-violet-500 text-white px-4 py-1.5 rounded-lg transition-all">
-                        Get started
-                    </Link>
-                </template>
-            </div>
-        </header>
+    <AuthenticatedLayout>
+        <template #header>
+            <h2 class="text-xl font-bold text-white">Community Gallery</h2>
+        </template>
 
-        <div class="max-w-7xl mx-auto px-6 py-12">
+        <div class="py-8 px-6 max-w-7xl mx-auto">
             <!-- Title + filters -->
             <div class="flex items-center justify-between mb-8">
-                <div>
-                    <h1 class="text-3xl font-bold text-white">Community Gallery</h1>
-                    <p class="text-gray-500 mt-1">Publicly shared AI generations</p>
-                </div>
+                <p class="text-gray-500">Publicly shared AI generations</p>
                 <select v-model="typeFilter" @change="applyFilter"
                     class="bg-gray-900/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-violet-500/50">
                     <option value="">All Types</option>
@@ -192,7 +170,7 @@ function meaningfulAttrs(attrs) {
                     v-html="link.label" />
             </div>
         </div>
-    </div>
+    </AuthenticatedLayout>
 
     <!-- ── Image / Video Modal ──────────────────────────────────────────────── -->
     <Teleport to="body">

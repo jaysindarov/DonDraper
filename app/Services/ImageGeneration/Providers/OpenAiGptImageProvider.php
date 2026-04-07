@@ -2,7 +2,6 @@
 
 namespace App\Services\ImageGeneration\Providers;
 
-use App\Contracts\ImageGenerationProvider;
 use App\Exceptions\NonRetryableException;
 use App\Models\Generation;
 use App\Services\ImageGeneration\GenerationResult;
@@ -14,11 +13,11 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Handles gpt-image-1 generations.
  *
- * When reference person photos are present the edits endpoint is used so the
- * model can see the actual faces — far more accurate than text descriptions.
- * Without reference photos the standard generations endpoint is used.
+ * Uses the edits endpoint when any visual reference (person or product) is present —
+ * the model sees the actual image bytes rather than a text description, which is
+ * significantly more accurate. Falls back to the generations endpoint for text-only.
  */
-class OpenAiGptImageProvider implements ImageGenerationProvider
+class OpenAiGptImageProvider extends BaseImageProvider
 {
     public function __construct(
         private readonly ImageStorageService $storage,
@@ -218,19 +217,7 @@ class OpenAiGptImageProvider implements ImageGenerationProvider
 
     private function extractB64(Response $response, string $context): string
     {
-        if ($response->status() === 400) {
-            throw new NonRetryableException(
-                "{$context} rejected request: " . ($response->json('error.message') ?? $response->body())
-            );
-        }
-
-        if ($response->status() === 429 || $response->status() >= 500) {
-            throw new \RuntimeException("{$context} temporary error ({$response->status()})");
-        }
-
-        if ($response->failed()) {
-            throw new NonRetryableException("{$context} error: " . $response->body());
-        }
+        $this->assertHttpSuccess($response, $context);
 
         $b64 = $response->json('data.0.b64_json');
 

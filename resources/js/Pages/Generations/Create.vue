@@ -5,26 +5,51 @@ import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
-    imageAttributes: Object,
-    videoAttributes: Object,
     credits: Number,
+    imageModels: Array,
+    videoModels: Array,
 })
 
 const form = useForm({
     type: 'image',
+    model: 'gpt-image-1',
     prompt: '',
     negative_prompt: '',
     product_type: '',
-    product_images: [],   // array of File objects — up to 4 angles
+    product_images: [],
     person_1_name: '',
     person_1_image: null,
     person_2_name: '',
     person_2_image: null,
-    attributes: {},
 })
 
+const currentModels = computed(() => form.type === 'video' ? props.videoModels : props.imageModels)
+
+// When type changes, reset to the recommended model for that type
+watch(() => form.type, (type) => {
+    const models = type === 'video' ? props.videoModels : props.imageModels
+    const recommended = models.find(m => m.recommended) ?? models[0]
+    if (recommended) form.model = recommended.id
+})
+
+// Accordion — prompt open by default, others closed
+const openSections = ref(new Set(['prompt']))
+
+const toggle = (key) => {
+    if (openSections.value.has(key)) {
+        openSections.value.delete(key)
+    } else {
+        openSections.value.add(key)
+    }
+    // trigger reactivity
+    openSections.value = new Set(openSections.value)
+}
+
+const isOpen = (key) => openSections.value.has(key)
+
+// Product images
 const MAX_PRODUCT_IMAGES = 4
-const productPreviews = ref([])   // parallel array of base64 preview strings
+const productPreviews = ref([])
 
 const addProductImage = (e) => {
     const file = e.target.files[0]
@@ -34,7 +59,6 @@ const addProductImage = (e) => {
     const reader = new FileReader()
     reader.onload = (ev) => { productPreviews.value = [...productPreviews.value, ev.target.result] }
     reader.readAsDataURL(file)
-    // reset input so the same file can be re-selected after removal
     e.target.value = ''
 }
 
@@ -66,31 +90,12 @@ const clearPerson = (n) => {
     else { form.person_2_image = null; form.person_2_name = ''; person2Preview.value = null; showPerson2.value = false }
 }
 
-// Initialize defaults from both attribute sets
-const initDefaults = () => {
-    const allAttrs = [
-        ...Object.values(props.imageAttributes).flat(),
-        ...Object.values(props.videoAttributes).flat(),
-    ]
-    allAttrs.forEach(attr => {
-        if (attr.default_value !== null && attr.default_value !== undefined) {
-            form.attributes[attr.key] = attr.default_value
-        }
-    })
-}
-initDefaults()
-
-const categoryIcons = { basic: '🎯', style: '🎨', quality: '💎', advanced: '⚙️', motion: '🎬', audio: '🔊' }
-
-const allCurrentAttributes = computed(() => {
-    const source = form.type === 'video' ? props.videoAttributes : props.imageAttributes
-    return Object.entries(source)
-        .map(([category, attrs]) => ({ category, attrs, icon: categoryIcons[category] ?? '🔧' }))
-        .filter(({ attrs }) => attrs.length > 0)
-})
-
 const creditCost = computed(() => form.type === 'video' ? 5 : 1)
 const estimatedTime = computed(() => form.type === 'video' ? '2–10 min' : '~30 sec')
+const characterCount = computed(() => form.prompt.length)
+const maxChars = 2000
+
+const personCount = computed(() => (person1Preview.value ? 1 : 0) + (person2Preview.value ? 1 : 0))
 
 const promptSuggestions = [
     'A majestic dragon soaring over a neon-lit cyberpunk city at night',
@@ -103,13 +108,8 @@ const promptSuggestions = [
 
 const useSuggestion = (s) => { form.prompt = s }
 
-const characterCount = computed(() => form.prompt.length)
-const maxChars = 2000
-
 const submit = () => {
-    form.post(route('generations.store'), {
-        forceFormData: true,
-    })
+    form.post(route('generations.store'), { forceFormData: true })
 }
 
 // Prompt enhancer
@@ -156,12 +156,12 @@ async function enhancePrompt() {
             <form @submit.prevent="submit">
                 <div class="grid lg:grid-cols-5 gap-8">
 
-                    <!-- Left: Prompt & Settings -->
-                    <div class="lg:col-span-3 space-y-6">
+                    <!-- Left: Steps -->
+                    <div class="lg:col-span-3 space-y-3">
 
                         <!-- Type Selector -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                            <label class="block text-sm font-semibold text-gray-300 mb-3">Generation Type</label>
+                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-5">
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Generation Type</label>
                             <div class="grid grid-cols-2 gap-3">
                                 <button type="button" @click="form.type = 'image'"
                                     :class="['flex items-center gap-3 p-4 rounded-xl border-2 transition-all', form.type === 'image' ? 'border-violet-500 bg-violet-500/10 text-white' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20']">
@@ -182,319 +182,353 @@ async function enhancePrompt() {
                             </div>
                         </div>
 
-                        <!-- Prompt -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                            <div class="flex items-center justify-between mb-3">
-                                <label class="text-sm font-semibold text-gray-300">Prompt</label>
-                                <span :class="['text-xs', characterCount > maxChars * 0.9 ? 'text-rose-400' : 'text-gray-500']">{{ characterCount }}/{{ maxChars }}</span>
-                            </div>
-                            <textarea
-                                v-model="form.prompt"
-                                rows="5"
-                                maxlength="2000"
-                                placeholder="Describe what you want to create in detail. The more specific, the better the result..."
-                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all resize-none text-sm"
-                                required
-                            ></textarea>
-                            <div v-if="form.errors.prompt" class="mt-2 text-sm text-rose-400">{{ form.errors.prompt }}</div>
+                        <!-- ── Accordion ──────────────────────────────────────── -->
 
-                            <!-- Enhance button -->
-                            <div class="mt-3 flex items-center gap-3">
-                                <button type="button" @click="enhancePrompt" :disabled="enhancing || !form.prompt.trim()"
-                                    class="flex items-center gap-2 text-xs bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-400 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40">
-                                    <svg v-if="enhancing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        <!-- Step 1: Prompt -->
+                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                            <button type="button" @click="toggle('prompt')"
+                                class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-base">✏️</span>
+                                    <span class="text-sm font-semibold text-white">Prompt</span>
+                                    <span class="text-[10px] font-medium text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">Required</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="!isOpen('prompt') && form.prompt"
+                                        class="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                                        {{ characterCount }} chars
+                                    </span>
+                                    <svg :class="['w-4 h-4 text-gray-500 transition-transform duration-200', isOpen('prompt') ? 'rotate-180' : '']"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
-                                    <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                    {{ enhancing ? 'Enhancing...' : 'Enhance with AI' }}
-                                </button>
-                                <span v-if="enhanceError" class="text-xs text-rose-400">{{ enhanceError }}</span>
-                            </div>
-
-                            <!-- Suggestions -->
-                            <div class="mt-4">
-                                <div class="text-xs text-gray-500 mb-2">Suggestions:</div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button v-for="s in promptSuggestions" :key="s" type="button"
-                                        @click="useSuggestion(s)"
-                                        class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5 text-gray-400 hover:text-white transition-all text-left">
-                                        {{ s.slice(0, 40) }}...
-                                    </button>
                                 </div>
-                            </div>
-                        </div>
+                            </button>
 
-                        <!-- Negative Prompt -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">Negative Prompt <span class="text-gray-600 font-normal">(optional)</span></label>
-                            <p class="text-xs text-gray-500 mb-3">Describe what you want to exclude from the image</p>
-                            <textarea
-                                v-model="form.negative_prompt"
-                                rows="2"
-                                placeholder="blurry, low quality, watermark, text, distorted..."
-                                class="w-full bg-white/5 border border-white/10 focus:border-rose-500/50 focus:ring-2 focus:ring-rose-500/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all resize-none text-sm"
-                            ></textarea>
-                        </div>
-
-                        <!-- Reference People (optional) -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-lg">🧑‍🤝‍🧑</span>
-                                <label class="text-sm font-semibold text-gray-300">Reference People <span class="text-gray-600 font-normal">(optional)</span></label>
-                            </div>
-                            <p class="text-xs text-gray-500 mb-5">Upload photos of the people you want to appear. GPT-4o Vision analyzes their exact appearance, then <strong class="text-gray-400">gpt-image-1</strong> uses the actual reference photos for accurate likeness — far better than DALL-E.</p>
-
-                            <div class="space-y-5">
-                                <!-- Person 1 -->
-                                <div class="border border-white/5 rounded-xl p-4 space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Person 1</span>
-                                        <button v-if="person1Preview" type="button" @click="clearPerson(1)" class="text-xs text-rose-400 hover:text-rose-300 transition-colors">Remove</button>
-                                    </div>
-                                    <input v-model="form.person_1_name" type="text" placeholder="Name or label (e.g. John, Model A)" maxlength="100"
-                                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
-
-                                    <div v-if="!person1Preview"
-                                        class="relative border-2 border-dashed border-white/10 hover:border-violet-500/40 rounded-xl transition-all cursor-pointer group"
-                                        @click="$refs.person1Input.click()">
-                                        <div class="flex items-center gap-3 px-4 py-4">
-                                            <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-violet-500/10 flex items-center justify-center flex-shrink-0 transition-all">
-                                                <svg class="w-5 h-5 text-gray-500 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <div :class="['grid transition-all duration-200 ease-in-out', isOpen('prompt') ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]']">
+                                <div class="overflow-hidden">
+                                    <div class="px-5 pb-5 pt-1 space-y-4">
+                                        <div>
+                                            <div class="flex items-center justify-between mb-2">
+                                                <label class="text-xs font-medium text-gray-400">Your prompt</label>
+                                                <span :class="['text-xs', characterCount > maxChars * 0.9 ? 'text-rose-400' : 'text-gray-600']">{{ characterCount }}/{{ maxChars }}</span>
                                             </div>
-                                            <div>
-                                                <p class="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Upload a clear photo of their face</p>
-                                                <p class="text-xs text-gray-600 mt-0.5">PNG, JPG, WEBP — max 5 MB</p>
-                                            </div>
+                                            <textarea
+                                                v-model="form.prompt"
+                                                rows="5"
+                                                maxlength="2000"
+                                                placeholder="Describe what you want to create in detail. The more specific, the better the result..."
+                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all resize-none text-sm"
+                                                required
+                                            ></textarea>
+                                            <div v-if="form.errors.prompt" class="mt-2 text-sm text-rose-400">{{ form.errors.prompt }}</div>
                                         </div>
-                                        <input ref="person1Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 1)" />
-                                    </div>
 
-                                    <div v-else class="relative rounded-xl overflow-hidden border border-white/10 group">
-                                        <img :src="person1Preview" alt="Person 1" class="w-full h-36 object-cover" />
-                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button type="button" @click="$refs.person1Input.click()" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">Change photo</button>
-                                        </div>
-                                        <input ref="person1Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 1)" />
-                                    </div>
-                                    <div v-if="form.errors.person_1_image" class="text-xs text-rose-400">{{ form.errors.person_1_image }}</div>
-                                </div>
-
-                                <!-- Person 2 (expandable) -->
-                                <div v-if="!showPerson2 && !person2Preview">
-                                    <button type="button" @click="showPerson2 = true"
-                                        class="flex items-center gap-2 text-sm text-gray-500 hover:text-violet-400 transition-colors">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                        Add a 2nd person
-                                    </button>
-                                </div>
-
-                                <div v-else class="border border-white/5 rounded-xl p-4 space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Person 2</span>
-                                        <button type="button" @click="clearPerson(2)" class="text-xs text-rose-400 hover:text-rose-300 transition-colors">Remove</button>
-                                    </div>
-                                    <input v-model="form.person_2_name" type="text" placeholder="Name or label (e.g. Jane, Model B)" maxlength="100"
-                                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
-
-                                    <div v-if="!person2Preview"
-                                        class="relative border-2 border-dashed border-white/10 hover:border-violet-500/40 rounded-xl transition-all cursor-pointer group"
-                                        @click="$refs.person2Input.click()">
-                                        <div class="flex items-center gap-3 px-4 py-4">
-                                            <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-violet-500/10 flex items-center justify-center flex-shrink-0 transition-all">
-                                                <svg class="w-5 h-5 text-gray-500 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                            </div>
-                                            <div>
-                                                <p class="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Upload a clear photo of their face</p>
-                                                <p class="text-xs text-gray-600 mt-0.5">PNG, JPG, WEBP — max 5 MB</p>
-                                            </div>
-                                        </div>
-                                        <input ref="person2Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 2)" />
-                                    </div>
-
-                                    <div v-else class="relative rounded-xl overflow-hidden border border-white/10 group">
-                                        <img :src="person2Preview" alt="Person 2" class="w-full h-36 object-cover" />
-                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button type="button" @click="$refs.person2Input.click()" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">Change photo</button>
-                                        </div>
-                                        <input ref="person2Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 2)" />
-                                    </div>
-                                    <div v-if="form.errors.person_2_image" class="text-xs text-rose-400">{{ form.errors.person_2_image }}</div>
-                                </div>
-
-                                <!-- Auto-switch to gpt-image-1 notice -->
-                                <div v-if="person1Preview || person2Preview" class="flex items-start gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
-                                    <svg class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    <p class="text-xs text-emerald-300">Reference photos detected — will automatically use <strong>gpt-image-1</strong> with the actual face photos for best accuracy.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Product Reference (optional) -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-lg">📦</span>
-                                <label class="text-sm font-semibold text-gray-300">Product Reference <span class="text-gray-600 font-normal">(optional)</span></label>
-                            </div>
-                            <p class="text-xs text-gray-500 mb-5">Upload your product image and describe its type. GPT-4o will analyze the product and place it realistically inside the AI-generated scene.</p>
-
-                            <div class="space-y-4">
-                                <!-- Product Type -->
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Product Type</label>
-                                    <input
-                                        v-model="form.product_type"
-                                        type="text"
-                                        placeholder="e.g. Coffee mug, Running shoe, Perfume bottle..."
-                                        maxlength="100"
-                                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 outline-none transition-all text-sm"
-                                    />
-                                </div>
-
-                                <!-- Product Images (multiple angles) -->
-                                <div>
-                                    <div class="flex items-center justify-between mb-2">
-                                        <label class="text-xs font-medium text-gray-400">Product Images</label>
-                                        <span class="text-xs text-gray-600">{{ form.product_images.length }}/{{ MAX_PRODUCT_IMAGES }} angles</span>
-                                    </div>
-
-                                    <!-- Image grid + add slot -->
-                                    <div class="grid grid-cols-4 gap-2">
-                                        <!-- Uploaded thumbnails -->
-                                        <div v-for="(preview, i) in productPreviews" :key="i"
-                                            class="relative aspect-square rounded-xl overflow-hidden border border-white/10 group">
-                                            <img :src="preview" :alt="`Product angle ${i + 1}`" class="w-full h-full object-cover bg-gray-800" />
-                                            <!-- Angle badge -->
-                                            <div class="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/60 text-gray-300 px-1.5 py-0.5 rounded">
-                                                {{ ['Front','Side','Back','Detail'][i] ?? `#${i+1}` }}
-                                            </div>
-                                            <!-- Remove button -->
-                                            <button type="button" @click="removeProductImage(i)"
-                                                class="absolute top-1 right-1 w-5 h-5 bg-rose-500 hover:bg-rose-400 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
-                                                <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                                        <!-- Enhance -->
+                                        <div class="flex items-center gap-3">
+                                            <button type="button" @click="enhancePrompt" :disabled="enhancing || !form.prompt.trim()"
+                                                class="flex items-center gap-2 text-xs bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-400 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40">
+                                                <svg v-if="enhancing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                                                 </svg>
+                                                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                                {{ enhancing ? 'Enhancing...' : 'Enhance with AI' }}
+                                            </button>
+                                            <span v-if="enhanceError" class="text-xs text-rose-400">{{ enhanceError }}</span>
+                                        </div>
+
+                                        <!-- Suggestions -->
+                                        <div>
+                                            <div class="text-xs text-gray-500 mb-2">Suggestions:</div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <button v-for="s in promptSuggestions" :key="s" type="button"
+                                                    @click="useSuggestion(s)"
+                                                    class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5 text-gray-400 hover:text-white transition-all text-left">
+                                                    {{ s.slice(0, 40) }}...
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Negative Prompt -->
+                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                            <button type="button" @click="toggle('negative')"
+                                class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-base">🚫</span>
+                                    <span class="text-sm font-semibold text-white">Negative Prompt</span>
+                                    <span class="text-[10px] font-medium text-gray-500 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">Optional</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="!isOpen('negative') && form.negative_prompt"
+                                        class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0">
+                                    </span>
+                                    <svg :class="['w-4 h-4 text-gray-500 transition-transform duration-200', isOpen('negative') ? 'rotate-180' : '']"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+
+                            <div :class="['grid transition-all duration-200 ease-in-out', isOpen('negative') ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]']">
+                                <div class="overflow-hidden">
+                                    <div class="px-5 pb-5 pt-1 space-y-2">
+                                        <p class="text-xs text-gray-500">Describe what you want to exclude from the result.</p>
+                                        <textarea
+                                            v-model="form.negative_prompt"
+                                            rows="2"
+                                            placeholder="blurry, low quality, watermark, text, distorted..."
+                                            class="w-full bg-white/5 border border-white/10 focus:border-rose-500/50 focus:ring-2 focus:ring-rose-500/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all resize-none text-sm"
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Reference People -->
+                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                            <button type="button" @click="toggle('people')"
+                                class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-base">🧑‍🤝‍🧑</span>
+                                    <span class="text-sm font-semibold text-white">Reference People</span>
+                                    <span class="text-[10px] font-medium text-gray-500 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">Optional</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="!isOpen('people') && personCount > 0"
+                                        class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                        {{ personCount }} {{ personCount === 1 ? 'person' : 'people' }}
+                                    </span>
+                                    <svg :class="['w-4 h-4 text-gray-500 transition-transform duration-200', isOpen('people') ? 'rotate-180' : '']"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+
+                            <div :class="['grid transition-all duration-200 ease-in-out', isOpen('people') ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]']">
+                                <div class="overflow-hidden">
+                                    <div class="px-5 pb-5 pt-1 space-y-5">
+                                        <p class="text-xs text-gray-500">Upload photos of the people you want to appear. GPT-4o Vision analyzes their exact appearance and passes it to the selected model for accurate likeness.</p>
+
+                                        <!-- Person 1 -->
+                                        <div class="border border-white/5 rounded-xl p-4 space-y-3">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Person 1</span>
+                                                <button v-if="person1Preview" type="button" @click="clearPerson(1)" class="text-xs text-rose-400 hover:text-rose-300 transition-colors">Remove</button>
+                                            </div>
+                                            <input v-model="form.person_1_name" type="text" placeholder="Name or label (e.g. John, Model A)" maxlength="100"
+                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
+
+                                            <div v-if="!person1Preview"
+                                                class="relative border-2 border-dashed border-white/10 hover:border-violet-500/40 rounded-xl transition-all cursor-pointer group"
+                                                @click="$refs.person1Input.click()">
+                                                <div class="flex items-center gap-3 px-4 py-4">
+                                                    <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-violet-500/10 flex items-center justify-center flex-shrink-0 transition-all">
+                                                        <svg class="w-5 h-5 text-gray-500 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Upload a clear photo of their face</p>
+                                                        <p class="text-xs text-gray-600 mt-0.5">PNG, JPG, WEBP — max 5 MB</p>
+                                                    </div>
+                                                </div>
+                                                <input ref="person1Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 1)" />
+                                            </div>
+
+                                            <div v-else class="relative rounded-xl overflow-hidden border border-white/10 group">
+                                                <img :src="person1Preview" alt="Person 1" class="w-full h-36 object-cover" />
+                                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <button type="button" @click="$refs.person1Input.click()" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">Change photo</button>
+                                                </div>
+                                                <input ref="person1Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 1)" />
+                                            </div>
+                                            <div v-if="form.errors.person_1_image" class="text-xs text-rose-400">{{ form.errors.person_1_image }}</div>
+                                        </div>
+
+                                        <!-- Person 2 -->
+                                        <div v-if="!showPerson2 && !person2Preview">
+                                            <button type="button" @click="showPerson2 = true"
+                                                class="flex items-center gap-2 text-sm text-gray-500 hover:text-violet-400 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                Add a 2nd person
                                             </button>
                                         </div>
 
-                                        <!-- Add new angle slot -->
-                                        <div v-if="form.product_images.length < MAX_PRODUCT_IMAGES"
-                                            class="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/40 flex flex-col items-center justify-center gap-1 cursor-pointer group transition-all"
-                                            @click="$refs.productImageInput.click()">
-                                            <svg class="w-5 h-5 text-gray-600 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                            </svg>
-                                            <span class="text-[10px] text-gray-600 group-hover:text-violet-400 transition-colors font-medium">
-                                                {{ form.product_images.length === 0 ? 'Add photo' : 'Add angle' }}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <input ref="productImageInput" type="file"
-                                        accept="image/jpeg,image/png,image/jpg,image/webp"
-                                        class="hidden" @change="addProductImage" />
-
-                                    <p class="text-xs text-gray-600 mt-2">
-                                        Add up to 4 angles (front, side, back, detail) for maximum accuracy
-                                    </p>
-                                    <div v-if="form.errors['product_images.0']" class="mt-1 text-xs text-rose-400">{{ form.errors['product_images.0'] }}</div>
-                                </div>
-
-                                <!-- Cost notice -->
-                                <div v-if="form.product_images.length > 0 || form.product_type" class="flex items-start gap-2 bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
-                                    <svg class="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    <p class="text-xs text-violet-300">
-                                        Each product image is analyzed by GPT-4o Vision.
-                                        <span v-if="form.product_images.length > 1"> {{ form.product_images.length }} angles uploaded — higher accuracy.</span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Generation Settings (all categories, no tabs) -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6 space-y-8">
-                            <div v-for="{ category, attrs, icon } in allCurrentAttributes" :key="category">
-                                <!-- Category header -->
-                                <div class="flex items-center gap-2 mb-5">
-                                    <span class="text-base">{{ icon }}</span>
-                                    <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ category }}</h4>
-                                    <div class="flex-1 h-px bg-white/5 ml-1"></div>
-                                </div>
-
-                                <div class="space-y-5">
-                                    <div v-for="attr in attrs" :key="attr.key">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <label :for="attr.key" class="text-sm font-medium text-gray-300">{{ attr.label }}</label>
-                                            <span v-if="attr.type === 'range'" class="text-xs text-violet-400 font-mono bg-violet-500/10 px-2 py-0.5 rounded-md tabular-nums">
-                                                {{ form.attributes[attr.key] ?? attr.default_value }}
-                                            </span>
-                                        </div>
-                                        <p v-if="attr.description" class="text-xs text-gray-600 mb-2">{{ attr.description }}</p>
-
-                                        <!-- Select -->
-                                        <select v-if="attr.type === 'select'" :id="attr.key" v-model="form.attributes[attr.key]"
-                                            class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all appearance-none cursor-pointer">
-                                            <option v-for="(label, value) in attr.options" :key="value" :value="value" class="bg-gray-800">{{ label }}</option>
-                                        </select>
-
-                                        <!-- Range — live value shown in the label badge above -->
-                                        <div v-else-if="attr.type === 'range'" class="space-y-1">
-                                            <input type="range" :id="attr.key"
-                                                v-model="form.attributes[attr.key]"
-                                                :min="attr.min" :max="attr.max" :step="attr.step"
-                                                class="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-violet-500" />
-                                            <div class="flex justify-between text-xs text-gray-600">
-                                                <span>{{ attr.min }}</span><span>{{ attr.max }}</span>
+                                        <div v-else class="border border-white/5 rounded-xl p-4 space-y-3">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Person 2</span>
+                                                <button type="button" @click="clearPerson(2)" class="text-xs text-rose-400 hover:text-rose-300 transition-colors">Remove</button>
                                             </div>
+                                            <input v-model="form.person_2_name" type="text" placeholder="Name or label (e.g. Jane, Model B)" maxlength="100"
+                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
+
+                                            <div v-if="!person2Preview"
+                                                class="relative border-2 border-dashed border-white/10 hover:border-violet-500/40 rounded-xl transition-all cursor-pointer group"
+                                                @click="$refs.person2Input.click()">
+                                                <div class="flex items-center gap-3 px-4 py-4">
+                                                    <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-violet-500/10 flex items-center justify-center flex-shrink-0 transition-all">
+                                                        <svg class="w-5 h-5 text-gray-500 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Upload a clear photo of their face</p>
+                                                        <p class="text-xs text-gray-600 mt-0.5">PNG, JPG, WEBP — max 5 MB</p>
+                                                    </div>
+                                                </div>
+                                                <input ref="person2Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 2)" />
+                                            </div>
+
+                                            <div v-else class="relative rounded-xl overflow-hidden border border-white/10 group">
+                                                <img :src="person2Preview" alt="Person 2" class="w-full h-36 object-cover" />
+                                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <button type="button" @click="$refs.person2Input.click()" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">Change photo</button>
+                                                </div>
+                                                <input ref="person2Input" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onPersonImageChange($event, 2)" />
+                                            </div>
+                                            <div v-if="form.errors.person_2_image" class="text-xs text-rose-400">{{ form.errors.person_2_image }}</div>
                                         </div>
 
-                                        <!-- Text -->
-                                        <input v-else-if="attr.type === 'text'" type="text" :id="attr.key"
-                                            v-model="form.attributes[attr.key]"
-                                            :placeholder="attr.description || attr.label"
-                                            class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all" />
-
-                                        <!-- Toggle -->
-                                        <button v-else-if="attr.type === 'toggle'" type="button"
-                                            @click="form.attributes[attr.key] = !form.attributes[attr.key]"
-                                            :class="['relative w-12 h-6 rounded-full transition-all', form.attributes[attr.key] ? 'bg-violet-500' : 'bg-white/10']">
-                                            <span :class="['absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow', form.attributes[attr.key] ? 'left-7' : 'left-1']"></span>
-                                        </button>
+                                        <!-- Reference photos notice -->
+                                        <div v-if="person1Preview || person2Preview" class="flex items-start gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
+                                            <svg class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <p class="text-xs text-emerald-300">Reference photos detected — will use <strong>{{ currentModels.find(m => m.id === form.model)?.label ?? form.model }}</strong> with the actual face photos for best accuracy.</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Step 4: Product Reference -->
+                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                            <button type="button" @click="toggle('product')"
+                                class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-base">📦</span>
+                                    <span class="text-sm font-semibold text-white">Product Reference</span>
+                                    <span class="text-[10px] font-medium text-gray-500 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">Optional</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="!isOpen('product') && (form.product_images.length > 0 || form.product_type)"
+                                        class="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                                        {{ form.product_images.length > 0 ? `${form.product_images.length} image${form.product_images.length > 1 ? 's' : ''}` : form.product_type }}
+                                    </span>
+                                    <svg :class="['w-4 h-4 text-gray-500 transition-transform duration-200', isOpen('product') ? 'rotate-180' : '']"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+
+                            <div :class="['grid transition-all duration-200 ease-in-out', isOpen('product') ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]']">
+                                <div class="overflow-hidden">
+                                    <div class="px-5 pb-5 pt-1 space-y-4">
+                                        <p class="text-xs text-gray-500">Upload your product image and describe its type. GPT-4o will analyze the product and place it realistically inside the AI-generated scene.</p>
+
+                                        <!-- Product Type -->
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-400 mb-1.5">Product Type</label>
+                                            <input
+                                                v-model="form.product_type"
+                                                type="text"
+                                                placeholder="e.g. Coffee mug, Running shoe, Perfume bottle..."
+                                                maxlength="100"
+                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 outline-none transition-all text-sm"
+                                            />
+                                        </div>
+
+                                        <!-- Product Images -->
+                                        <div>
+                                            <div class="flex items-center justify-between mb-2">
+                                                <label class="text-xs font-medium text-gray-400">Product Images</label>
+                                                <span class="text-xs text-gray-600">{{ form.product_images.length }}/{{ MAX_PRODUCT_IMAGES }} angles</span>
+                                            </div>
+
+                                            <div class="grid grid-cols-4 gap-2">
+                                                <div v-for="(preview, i) in productPreviews" :key="i"
+                                                    class="relative aspect-square rounded-xl overflow-hidden border border-white/10 group">
+                                                    <img :src="preview" :alt="`Product angle ${i + 1}`" class="w-full h-full object-cover bg-gray-800" />
+                                                    <div class="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/60 text-gray-300 px-1.5 py-0.5 rounded">
+                                                        {{ ['Front','Side','Back','Detail'][i] ?? `#${i+1}` }}
+                                                    </div>
+                                                    <button type="button" @click="removeProductImage(i)"
+                                                        class="absolute top-1 right-1 w-5 h-5 bg-rose-500 hover:bg-rose-400 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                                                        <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+
+                                                <div v-if="form.product_images.length < MAX_PRODUCT_IMAGES"
+                                                    class="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/40 flex flex-col items-center justify-center gap-1 cursor-pointer group transition-all"
+                                                    @click="$refs.productImageInput.click()">
+                                                    <svg class="w-5 h-5 text-gray-600 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                    </svg>
+                                                    <span class="text-[10px] text-gray-600 group-hover:text-violet-400 transition-colors font-medium">
+                                                        {{ form.product_images.length === 0 ? 'Add photo' : 'Add angle' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <input ref="productImageInput" type="file"
+                                                accept="image/jpeg,image/png,image/jpg,image/webp"
+                                                class="hidden" @change="addProductImage" />
+
+                                            <p class="text-xs text-gray-600 mt-2">Add up to 4 angles for maximum accuracy</p>
+                                            <div v-if="form.errors['product_images.0']" class="mt-1 text-xs text-rose-400">{{ form.errors['product_images.0'] }}</div>
+                                        </div>
+
+                                        <!-- Notice -->
+                                        <div v-if="form.product_images.length > 0 || form.product_type" class="flex items-start gap-2 bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
+                                            <svg class="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <p class="text-xs text-violet-300">
+                                                Each product image is analyzed by GPT-4o Vision.
+                                                <span v-if="form.product_images.length > 1"> {{ form.product_images.length }} angles uploaded — higher accuracy.</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
                     </div>
 
                     <!-- Right: Preview & Submit -->
                     <div class="lg:col-span-2 space-y-6">
-
-                        <!-- Preview Panel -->
                         <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6 sticky top-24">
-                            <h3 class="text-sm font-semibold text-gray-300 mb-4">Generation Preview</h3>
-
-                            <!-- Placeholder preview box -->
-                            <div class="aspect-square rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-white/5 flex flex-col items-center justify-center mb-6 relative overflow-hidden">
-                                <div class="absolute inset-0 bg-[linear-gradient(rgba(139,92,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(139,92,246,0.03)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                                <div class="relative text-center px-6">
-                                    <div class="text-5xl mb-3 opacity-30">🎨</div>
-                                    <p class="text-xs text-gray-600">
-                                        {{ form.prompt ? form.prompt.slice(0, 80) + (form.prompt.length > 80 ? '...' : '') : 'Your creation will appear here' }}
-                                    </p>
+                            <!-- Model Picker -->
+                            <div class="mb-6">
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">AI Model</label>
+                                <div class="space-y-2">
+                                    <button v-for="m in currentModels" :key="m.id"
+                                        type="button"
+                                        @click="form.model = m.id"
+                                        :class="['w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left',
+                                            form.model === m.id
+                                                ? 'border-violet-500 bg-violet-500/10'
+                                                : 'border-white/8 bg-white/3 hover:border-white/15']">
+                                        <div :class="['w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all',
+                                            form.model === m.id ? 'border-violet-500' : 'border-white/20']">
+                                            <div v-if="form.model === m.id" class="w-2 h-2 rounded-full bg-violet-500"></div>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span :class="['text-sm font-semibold', form.model === m.id ? 'text-white' : 'text-gray-300']">{{ m.label }}</span>
+                                                <span class="text-xs text-gray-600">{{ m.provider }}</span>
+                                                <span v-if="m.recommended" class="text-[10px] font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">
+                                                    Recommended
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-0.5">{{ m.description }}</p>
+                                        </div>
+                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Settings Summary -->
-                            <div class="space-y-2 mb-6">
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Settings</div>
-                                <div v-for="(val, key) in form.attributes" :key="key" v-show="val && val !== ''"
-                                    class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-500 capitalize">{{ key.replace(/_/g, ' ') }}</span>
-                                    <span class="text-gray-300 font-medium">{{ val }}</span>
-                                </div>
-                            </div>
-
-                            <!-- Credits Warning -->
                             <div v-if="credits === 0" class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 mb-4 text-sm text-rose-400">
                                 You have no credits left. <Link :href="route('home') + '#pricing'" class="underline">Upgrade your plan</Link> to continue.
                             </div>
@@ -503,7 +537,6 @@ async function enhancePrompt() {
                                 {{ form.errors.credits }}
                             </div>
 
-                            <!-- Video time notice -->
                             <div v-if="form.type === 'video'" class="bg-fuchsia-500/5 border border-fuchsia-500/20 rounded-xl p-3 mb-3 text-xs text-fuchsia-300 flex items-start gap-2">
                                 <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 Video generation takes 2–10 minutes. You'll see a live status update on the result page.
@@ -528,6 +561,7 @@ async function enhancePrompt() {
                             </p>
                         </div>
                     </div>
+
                 </div>
             </form>
         </div>

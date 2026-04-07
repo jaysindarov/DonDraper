@@ -62,4 +62,8 @@ return [
         'token' => env('REPLICATE_API_TOKEN'),
     ],
 
+    'grok' => [
+        'key' => env('GROK_API_KEY'),
+    ],
+
 ];

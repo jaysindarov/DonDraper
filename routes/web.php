@@ -23,10 +23,8 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-// Public gallery
-Route::get('/gallery', [GalleryController::class, 'index'])->name('gallery');
-
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/gallery', [GalleryController::class, 'index'])->name('gallery');
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard', [
             'recentGenerations' => auth()->user()->generations()->latest()->limit(8)->get(),
