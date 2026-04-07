@@ -39,7 +39,7 @@ const statusColor = (status) => {
                         <span class="text-xs bg-violet-500/20 text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded-full">credits left</span>
                     </div>
                     <div class="text-sm text-gray-400">Available Credits</div>
-                    <Link :href="route('home') + '#pricing'" class="text-xs text-violet-400 hover:text-violet-300 mt-1 inline-block">Upgrade plan →</Link>
+                    <Link :href="route('billing')" class="text-xs text-violet-400 hover:text-violet-300 mt-1 inline-block">Upgrade plan →</Link>
                 </div>
             </div>
 

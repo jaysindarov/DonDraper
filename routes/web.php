@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminGenerationController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\ProfileController;
@@ -22,6 +23,10 @@ Route::get('/', function () {
         'canRegister' => Route::has('register'),
     ]);
 })->name('home');
+
+// Stripe webhook — no auth, Cashier verifies the signature
+Route::post('/stripe/webhook', [\App\Http\Controllers\WebhookController::class, 'handleWebhook'])
+    ->name('cashier.webhook');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/gallery', [GalleryController::class, 'index'])->name('gallery');
@@ -71,6 +76,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::get('/invitations/{token}/accept', [TeamController::class, 'acceptInvite'])
         ->name('teams.invitation.accept');
+
+    // Billing
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing');
+    Route::get('/billing/checkout/{plan}', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::get('/billing/success', [BillingController::class, 'success'])->name('billing.success');
+    Route::get('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
+    Route::get('/billing/credits/{pack}', [BillingController::class, 'buyCredits'])->name('billing.credits');
+    Route::get('/billing/credits/success', [BillingController::class, 'creditsSuccess'])->name('billing.credits.success');
 
     // Admin
     Route::middleware('is_admin')->prefix('admin')->name('admin.')->group(function () {

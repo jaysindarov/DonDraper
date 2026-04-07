@@ -44,6 +44,9 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'features' => [
+                'api_tokens' => (bool) env('FEATURE_API_TOKENS', false),
+            ],
         ];
     }
 }

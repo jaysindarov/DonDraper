@@ -11,10 +11,11 @@ const navLinks = [
     { name: 'Generate', route: 'generations.create', icon: 'M12 4v16m8-8H4' },
     { name: 'My Gallery', route: 'generations.index', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
     { name: 'Community', route: 'gallery', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-    { name: 'API Tokens', route: 'api-tokens.index', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z' },
+    { name: 'Billing', route: 'billing', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
 ]
 
 const isAdmin = page.props.auth?.is_admin
+const apiTokensEnabled = page.props.features?.api_tokens
 </script>
 
 <template>
@@ -40,6 +41,13 @@ const isAdmin = page.props.auth?.is_admin
                             <path stroke-linecap="round" stroke-linejoin="round" :d="link.icon" />
                         </svg>
                         {{ link.name }}
+                    </Link>
+                    <Link v-if="apiTokensEnabled" :href="route('api-tokens.index')"
+                        :class="['flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all', route().current('api-tokens.*') ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20' : 'text-gray-400 hover:text-white hover:bg-white/5']">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                        API Tokens
                     </Link>
                     <Link v-if="isAdmin" :href="route('admin.dashboard')"
                         :class="['flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-2',
@@ -107,6 +115,13 @@ const isAdmin = page.props.auth?.is_admin
                                 <path stroke-linecap="round" stroke-linejoin="round" :d="link.icon" />
                             </svg>
                             {{ link.name }}
+                        </Link>
+                        <Link v-if="apiTokensEnabled" :href="route('api-tokens.index')"
+                            :class="['flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium', route().current('api-tokens.*') ? 'bg-violet-500/15 text-violet-300' : 'text-gray-400']">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                            API Tokens
                         </Link>
                         <div class="border-t border-white/5 pt-3 mt-3">
                             <Link :href="route('logout')" method="post" as="button" class="flex items-center gap-2 px-3 py-2 text-sm text-rose-400 w-full text-left">
