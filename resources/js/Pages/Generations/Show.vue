@@ -17,6 +17,9 @@ const statusConfig = {
 const status = computed(() => statusConfig[props.generation.status] || statusConfig.pending)
 const isInProgress = computed(() => ['pending', 'processing'].includes(props.generation.status))
 
+// Steps from metadata — set by the job as it runs
+const steps = computed(() => props.generation.metadata?.steps ?? [])
+
 let pollInterval = null
 
 onMounted(() => {
@@ -94,15 +97,12 @@ const togglePublic = () => {
                         <!-- Loading / failed states -->
                         <div v-else class="w-full h-full flex flex-col items-center justify-center gap-4 p-6">
                             <div v-if="isInProgress" class="text-center">
-                                <svg class="w-16 h-16 text-violet-400 animate-spin mx-auto" fill="none" viewBox="0 0 24 24">
+                                <svg class="w-12 h-12 text-violet-400 animate-spin mx-auto" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
-                                <p class="text-sm text-gray-400 mt-4">
-                                    {{ isVideo ? 'Video is being generated — this can take a few minutes...' : 'AI is generating your image...' }}
-                                </p>
-                                <p v-if="isVideo" class="text-xs text-gray-600 mt-2">
-                                    The page will auto-update when ready.
+                                <p class="text-sm text-gray-500 mt-4">
+                                    {{ isVideo ? 'Generating your video...' : 'Generating your image...' }}
                                 </p>
                             </div>
                             <div v-else-if="generation.status === 'failed'" class="text-center">
@@ -111,6 +111,35 @@ const togglePublic = () => {
                                 <p v-if="generation.error_message" class="text-xs text-gray-500 max-w-sm">{{ generation.error_message }}</p>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Progress Steps — shown below the image box while in progress -->
+                    <div v-if="isInProgress && steps.length > 0" class="bg-gray-900/50 border border-white/5 rounded-2xl p-5">
+                        <div class="space-y-2.5">
+                            <div v-for="(step, i) in steps" :key="i" class="flex items-center gap-3">
+                                <div class="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                                    <svg v-if="step.status === 'done'" class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <svg v-else-if="step.status === 'running'" class="w-4 h-4 text-violet-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                    </svg>
+                                    <svg v-else-if="step.status === 'failed'" class="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    <div v-else class="w-3 h-3 rounded-full border border-gray-600"></div>
+                                </div>
+                                <span :class="[
+                                    'text-sm transition-colors',
+                                    step.status === 'done' ? 'text-gray-500' :
+                                    step.status === 'running' ? 'text-white font-medium' :
+                                    step.status === 'failed' ? 'text-rose-400' :
+                                    'text-gray-600'
+                                ]">{{ step.label }}</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-4 animate-pulse">Auto-refreshing every {{ isVideo ? '5' : '3' }}s...</p>
                     </div>
 
                     <!-- Actions -->
@@ -166,20 +195,35 @@ const togglePublic = () => {
                     </div>
 
                     <!-- Product Reference -->
-                    <div v-if="generation.product_type || generation.product_image_path" class="bg-gray-900/50 border border-violet-500/20 rounded-2xl p-6">
+                    <div v-if="generation.product_type || generation.product_image_path || generation.product_image_paths?.length"
+                        class="bg-gray-900/50 border border-violet-500/20 rounded-2xl p-6">
                         <h3 class="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
                             <span>📦</span> Product Reference
+                            <span v-if="(generation.product_image_paths?.length ?? 0) > 1"
+                                class="ml-auto text-xs text-violet-400 font-normal">
+                                {{ generation.product_image_paths.length }} angles
+                            </span>
                         </h3>
-                        <div class="flex items-start gap-4">
-                            <img v-if="generation.product_image_path"
-                                :src="`/storage/${generation.product_image_path}`"
-                                alt="Product"
-                                class="w-20 h-20 object-cover rounded-xl border border-white/10 flex-shrink-0" />
-                            <div>
-                                <div v-if="generation.product_type" class="text-sm font-medium text-violet-300 mb-1">{{ generation.product_type }}</div>
-                                <p class="text-xs text-gray-500">GPT-4o Vision analyzed this product and incorporated it into the generation prompt.</p>
+
+                        <!-- Multiple images grid -->
+                        <div v-if="generation.product_image_paths?.length > 0" class="grid grid-cols-4 gap-2 mb-4">
+                            <div v-for="(path, i) in generation.product_image_paths" :key="i" class="relative">
+                                <img :src="`/storage/${path}`" :alt="`Product angle ${i + 1}`"
+                                    class="w-full aspect-square object-cover rounded-xl border border-white/10" />
+                                <div class="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/60 text-gray-300 px-1.5 py-0.5 rounded">
+                                    {{ ['Front','Side','Back','Detail'][i] ?? `#${i+1}` }}
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Legacy single image fallback -->
+                        <div v-else-if="generation.product_image_path" class="mb-4">
+                            <img :src="`/storage/${generation.product_image_path}`" alt="Product"
+                                class="w-24 h-24 object-cover rounded-xl border border-white/10" />
+                        </div>
+
+                        <div v-if="generation.product_type" class="text-sm font-medium text-violet-300 mb-1">{{ generation.product_type }}</div>
+                        <p class="text-xs text-gray-500">GPT-4o Vision analyzed each angle and combined the descriptions into the generation prompt.</p>
                     </div>
 
                     <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">

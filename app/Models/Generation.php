@@ -18,6 +18,7 @@ class Generation extends Model
         'negative_prompt',
         'product_type',
         'product_image_path',
+        'product_image_paths',
         'reference_persons',
         'model',
         'provider',
@@ -39,11 +40,31 @@ class Generation extends Model
     protected function casts(): array
     {
         return [
-            'attributes'        => 'array',
-            'metadata'          => 'array',
-            'reference_persons' => 'array',
-            'is_public'         => 'boolean',
+            'attributes'           => 'array',
+            'metadata'             => 'array',
+            'reference_persons'    => 'array',
+            'product_image_paths'  => 'array',
+            'is_public'            => 'boolean',
         ];
+    }
+
+    /**
+     * Returns all product image paths regardless of whether they were stored
+     * as a multi-image array (new) or a single path string (legacy).
+     *
+     * @return string[]
+     */
+    public function allProductImagePaths(): array
+    {
+        if (!empty($this->product_image_paths)) {
+            return $this->product_image_paths;
+        }
+
+        if ($this->product_image_path) {
+            return [$this->product_image_path];
+        }
+
+        return [];
     }
 
     public function user(): BelongsTo

@@ -51,16 +51,17 @@ class GenerationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'type'              => 'required|in:image,video',
-            'prompt'            => 'required|string|max:2000',
-            'negative_prompt'   => 'nullable|string|max:1000',
-            'attributes'        => 'nullable|array',
-            'product_type'      => 'nullable|string|max:100',
-            'product_image'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'person_1_name'     => 'nullable|string|max:100',
-            'person_1_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'person_2_name'     => 'nullable|string|max:100',
-            'person_2_image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'type'               => 'required|in:image,video',
+            'prompt'             => 'required|string|max:2000',
+            'negative_prompt'    => 'nullable|string|max:1000',
+            'attributes'         => 'nullable|array',
+            'product_type'       => 'nullable|string|max:100',
+            'product_images'     => 'nullable|array|max:4',
+            'product_images.*'   => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+            'person_1_name'      => 'nullable|string|max:100',
+            'person_1_image'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'person_2_name'      => 'nullable|string|max:100',
+            'person_2_image'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $user        = auth()->user();
@@ -73,12 +74,14 @@ class GenerationController extends Controller
             ]);
         }
 
-        // Store product image
-        $productImagePath = null;
-        if ($request->hasFile('product_image')) {
-            $productImagePath = $request->file('product_image')
-                ->store("products/{$user->id}", 'public');
+        // Store product images (multiple angles, up to 4)
+        $productImagePaths = [];
+        if ($request->hasFile('product_images')) {
+            foreach ($request->file('product_images') as $file) {
+                $productImagePaths[] = $file->store("products/{$user->id}", 'public');
+            }
         }
+        $productImagePath = $productImagePaths[0] ?? null; // primary for display / backward compat
 
         // Store reference person images
         $referencePersons = [];
@@ -106,7 +109,8 @@ class GenerationController extends Controller
             'prompt'             => $validated['prompt'],
             'negative_prompt'    => $validated['negative_prompt'] ?? null,
             'product_type'       => $validated['product_type'] ?? null,
-            'product_image_path' => $productImagePath,
+            'product_image_path'  => $productImagePath,
+            'product_image_paths' => !empty($productImagePaths) ? $productImagePaths : null,
             'reference_persons'  => !empty($referencePersons) ? $referencePersons : null,
             'model'              => $model,
             'provider'           => $provider,
@@ -176,8 +180,8 @@ class GenerationController extends Controller
     {
         //$this->authorize('delete', $generation);
 
-        if ($generation->product_image_path) {
-            Storage::disk('public')->delete($generation->product_image_path);
+        foreach ($generation->allProductImagePaths() as $path) {
+            Storage::disk('public')->delete($path);
         }
 
         foreach ($generation->reference_persons ?? [] as $person) {

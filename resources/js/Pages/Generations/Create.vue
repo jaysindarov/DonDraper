@@ -15,7 +15,7 @@ const form = useForm({
     prompt: '',
     negative_prompt: '',
     product_type: '',
-    product_image: null,
+    product_images: [],   // array of File objects — up to 4 angles
     person_1_name: '',
     person_1_image: null,
     person_2_name: '',
@@ -23,20 +23,24 @@ const form = useForm({
     attributes: {},
 })
 
-const productImagePreview = ref(null)
+const MAX_PRODUCT_IMAGES = 4
+const productPreviews = ref([])   // parallel array of base64 preview strings
 
-const onProductImageChange = (e) => {
+const addProductImage = (e) => {
     const file = e.target.files[0]
     if (!file) return
-    form.product_image = file
+    if (form.product_images.length >= MAX_PRODUCT_IMAGES) return
+    form.product_images = [...form.product_images, file]
     const reader = new FileReader()
-    reader.onload = (ev) => { productImagePreview.value = ev.target.result }
+    reader.onload = (ev) => { productPreviews.value = [...productPreviews.value, ev.target.result] }
     reader.readAsDataURL(file)
+    // reset input so the same file can be re-selected after removal
+    e.target.value = ''
 }
 
-const clearProductImage = () => {
-    form.product_image = null
-    productImagePreview.value = null
+const removeProductImage = (index) => {
+    form.product_images = form.product_images.filter((_, i) => i !== index)
+    productPreviews.value = productPreviews.value.filter((_, i) => i !== index)
 }
 
 // Reference people
@@ -76,24 +80,13 @@ const initDefaults = () => {
 }
 initDefaults()
 
-const activeTab = ref('basic')
-const imageTabs = [
-    { key: 'basic',    label: 'Basic',    icon: '🎯' },
-    { key: 'style',    label: 'Style',    icon: '🎨' },
-    { key: 'quality',  label: 'Quality',  icon: '💎' },
-    { key: 'advanced', label: 'Advanced', icon: '⚙️' },
-]
-const videoTabs = [
-    { key: 'basic',   label: 'Basic',  icon: '🎯' },
-    { key: 'style',   label: 'Style',  icon: '🎨' },
-    { key: 'quality', label: 'Quality', icon: '💎' },
-]
+const categoryIcons = { basic: '🎯', style: '🎨', quality: '💎', advanced: '⚙️', motion: '🎬', audio: '🔊' }
 
-const tabs = computed(() => form.type === 'video' ? videoTabs : imageTabs)
-
-const currentTabAttributes = computed(() => {
+const allCurrentAttributes = computed(() => {
     const source = form.type === 'video' ? props.videoAttributes : props.imageAttributes
-    return source[activeTab.value] || []
+    return Object.entries(source)
+        .map(([category, attrs]) => ({ category, attrs, icon: categoryIcons[category] ?? '🔧' }))
+        .filter(({ attrs }) => attrs.length > 0)
 })
 
 const creditCost = computed(() => form.type === 'video' ? 5 : 1)
@@ -178,7 +171,7 @@ async function enhancePrompt() {
                                         <div class="text-xs opacity-60">1 credit</div>
                                     </div>
                                 </button>
-                                <button type="button" @click="form.type = 'video'; activeTab = 'basic'"
+                                <button type="button" @click="form.type = 'video'"
                                     :class="['flex items-center gap-3 p-4 rounded-xl border-2 transition-all', form.type === 'video' ? 'border-fuchsia-500 bg-fuchsia-500/10 text-white' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20']">
                                     <span class="text-2xl">🎬</span>
                                     <div class="text-left">
@@ -358,96 +351,116 @@ async function enhancePrompt() {
                                     />
                                 </div>
 
-                                <!-- Product Image Upload -->
+                                <!-- Product Images (multiple angles) -->
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Product Image</label>
-                                    <div v-if="!productImagePreview"
-                                        class="relative border-2 border-dashed border-white/10 hover:border-violet-500/40 rounded-xl transition-all cursor-pointer group"
-                                        @click="$refs.productImageInput.click()">
-                                        <div class="flex flex-col items-center justify-center py-8 px-4 text-center">
-                                            <div class="w-10 h-10 rounded-xl bg-white/5 group-hover:bg-violet-500/10 flex items-center justify-center mb-3 transition-all">
-                                                <svg class="w-5 h-5 text-gray-500 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                            </div>
-                                            <p class="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Click to upload product photo</p>
-                                            <p class="text-xs text-gray-600 mt-1">PNG, JPG, WEBP — max 5 MB</p>
-                                        </div>
-                                        <input ref="productImageInput" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onProductImageChange" />
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="text-xs font-medium text-gray-400">Product Images</label>
+                                        <span class="text-xs text-gray-600">{{ form.product_images.length }}/{{ MAX_PRODUCT_IMAGES }} angles</span>
                                     </div>
 
-                                    <!-- Preview -->
-                                    <div v-else class="relative rounded-xl overflow-hidden border border-white/10 group">
-                                        <img :src="productImagePreview" alt="Product preview" class="w-full h-40 object-contain bg-gray-800" />
-                                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button type="button" @click="clearProductImage" class="bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                Remove
+                                    <!-- Image grid + add slot -->
+                                    <div class="grid grid-cols-4 gap-2">
+                                        <!-- Uploaded thumbnails -->
+                                        <div v-for="(preview, i) in productPreviews" :key="i"
+                                            class="relative aspect-square rounded-xl overflow-hidden border border-white/10 group">
+                                            <img :src="preview" :alt="`Product angle ${i + 1}`" class="w-full h-full object-cover bg-gray-800" />
+                                            <!-- Angle badge -->
+                                            <div class="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/60 text-gray-300 px-1.5 py-0.5 rounded">
+                                                {{ ['Front','Side','Back','Detail'][i] ?? `#${i+1}` }}
+                                            </div>
+                                            <!-- Remove button -->
+                                            <button type="button" @click="removeProductImage(i)"
+                                                class="absolute top-1 right-1 w-5 h-5 bg-rose-500 hover:bg-rose-400 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                                                <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
                                             </button>
                                         </div>
+
+                                        <!-- Add new angle slot -->
+                                        <div v-if="form.product_images.length < MAX_PRODUCT_IMAGES"
+                                            class="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/40 flex flex-col items-center justify-center gap-1 cursor-pointer group transition-all"
+                                            @click="$refs.productImageInput.click()">
+                                            <svg class="w-5 h-5 text-gray-600 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                            <span class="text-[10px] text-gray-600 group-hover:text-violet-400 transition-colors font-medium">
+                                                {{ form.product_images.length === 0 ? 'Add photo' : 'Add angle' }}
+                                            </span>
+                                        </div>
                                     </div>
 
-                                    <div v-if="form.errors.product_image" class="mt-1.5 text-xs text-rose-400">{{ form.errors.product_image }}</div>
+                                    <input ref="productImageInput" type="file"
+                                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                                        class="hidden" @change="addProductImage" />
+
+                                    <p class="text-xs text-gray-600 mt-2">
+                                        Add up to 4 angles (front, side, back, detail) for maximum accuracy
+                                    </p>
+                                    <div v-if="form.errors['product_images.0']" class="mt-1 text-xs text-rose-400">{{ form.errors['product_images.0'] }}</div>
                                 </div>
 
                                 <!-- Cost notice -->
-                                <div v-if="form.product_image || form.product_type" class="flex items-start gap-2 bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
+                                <div v-if="form.product_images.length > 0 || form.product_type" class="flex items-start gap-2 bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
                                     <svg class="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    <p class="text-xs text-violet-300">Product analysis uses GPT-4o Vision. This adds ~$0.01–0.02 per generation for more realistic results.</p>
+                                    <p class="text-xs text-violet-300">
+                                        Each product image is analyzed by GPT-4o Vision.
+                                        <span v-if="form.product_images.length > 1"> {{ form.product_images.length }} angles uploaded — higher accuracy.</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Attributes Tabs -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
-                            <!-- Tab Headers -->
-                            <div class="flex border-b border-white/5">
-                                <button v-for="tab in tabs" :key="tab.key" type="button"
-                                    @click="activeTab = tab.key"
-                                    :class="['flex items-center gap-2 flex-1 py-3 px-4 text-sm font-medium transition-all', activeTab === tab.key ? 'text-white border-b-2 border-violet-500 bg-violet-500/5' : 'text-gray-500 hover:text-gray-300']">
-                                    <span>{{ tab.icon }}</span>
-                                    <span class="hidden sm:inline">{{ tab.label }}</span>
-                                </button>
-                            </div>
+                        <!-- Generation Settings (all categories, no tabs) -->
+                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6 space-y-8">
+                            <div v-for="{ category, attrs, icon } in allCurrentAttributes" :key="category">
+                                <!-- Category header -->
+                                <div class="flex items-center gap-2 mb-5">
+                                    <span class="text-base">{{ icon }}</span>
+                                    <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ category }}</h4>
+                                    <div class="flex-1 h-px bg-white/5 ml-1"></div>
+                                </div>
 
-                            <!-- Tab Content -->
-                            <div class="p-6 space-y-5">
-                                <div v-for="attr in currentTabAttributes" :key="attr.key">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <label :for="attr.key" class="text-sm font-medium text-gray-300">{{ attr.label }}</label>
-                                        <span v-if="attr.type === 'range'" class="text-xs text-violet-400 font-mono bg-violet-500/10 px-2 py-0.5 rounded">
-                                            {{ form.attributes[attr.key] || attr.default_value }}
-                                        </span>
-                                    </div>
-                                    <p v-if="attr.description" class="text-xs text-gray-600 mb-2">{{ attr.description }}</p>
-
-                                    <!-- Select -->
-                                    <select v-if="attr.type === 'select'" :id="attr.key" v-model="form.attributes[attr.key]"
-                                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all appearance-none cursor-pointer">
-                                        <option v-for="(label, value) in attr.options" :key="value" :value="value" class="bg-gray-800">{{ label }}</option>
-                                    </select>
-
-                                    <!-- Range -->
-                                    <div v-else-if="attr.type === 'range'" class="space-y-1">
-                                        <input type="range" :id="attr.key"
-                                            v-model="form.attributes[attr.key]"
-                                            :min="attr.min" :max="attr.max" :step="attr.step"
-                                            class="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-violet-500" />
-                                        <div class="flex justify-between text-xs text-gray-600">
-                                            <span>{{ attr.min }}</span><span>{{ attr.max }}</span>
+                                <div class="space-y-5">
+                                    <div v-for="attr in attrs" :key="attr.key">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label :for="attr.key" class="text-sm font-medium text-gray-300">{{ attr.label }}</label>
+                                            <span v-if="attr.type === 'range'" class="text-xs text-violet-400 font-mono bg-violet-500/10 px-2 py-0.5 rounded-md tabular-nums">
+                                                {{ form.attributes[attr.key] ?? attr.default_value }}
+                                            </span>
                                         </div>
+                                        <p v-if="attr.description" class="text-xs text-gray-600 mb-2">{{ attr.description }}</p>
+
+                                        <!-- Select -->
+                                        <select v-if="attr.type === 'select'" :id="attr.key" v-model="form.attributes[attr.key]"
+                                            class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all appearance-none cursor-pointer">
+                                            <option v-for="(label, value) in attr.options" :key="value" :value="value" class="bg-gray-800">{{ label }}</option>
+                                        </select>
+
+                                        <!-- Range — live value shown in the label badge above -->
+                                        <div v-else-if="attr.type === 'range'" class="space-y-1">
+                                            <input type="range" :id="attr.key"
+                                                v-model="form.attributes[attr.key]"
+                                                :min="attr.min" :max="attr.max" :step="attr.step"
+                                                class="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-violet-500" />
+                                            <div class="flex justify-between text-xs text-gray-600">
+                                                <span>{{ attr.min }}</span><span>{{ attr.max }}</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Text -->
+                                        <input v-else-if="attr.type === 'text'" type="text" :id="attr.key"
+                                            v-model="form.attributes[attr.key]"
+                                            :placeholder="attr.description || attr.label"
+                                            class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all" />
+
+                                        <!-- Toggle -->
+                                        <button v-else-if="attr.type === 'toggle'" type="button"
+                                            @click="form.attributes[attr.key] = !form.attributes[attr.key]"
+                                            :class="['relative w-12 h-6 rounded-full transition-all', form.attributes[attr.key] ? 'bg-violet-500' : 'bg-white/10']">
+                                            <span :class="['absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow', form.attributes[attr.key] ? 'left-7' : 'left-1']"></span>
+                                        </button>
                                     </div>
-
-                                    <!-- Text -->
-                                    <input v-else-if="attr.type === 'text'" type="text" :id="attr.key"
-                                        v-model="form.attributes[attr.key]"
-                                        :placeholder="attr.description || attr.label"
-                                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all" />
-
-                                    <!-- Toggle -->
-                                    <button v-else-if="attr.type === 'toggle'" type="button"
-                                        @click="form.attributes[attr.key] = !form.attributes[attr.key]"
-                                        :class="['relative w-12 h-6 rounded-full transition-all', form.attributes[attr.key] ? 'bg-violet-500' : 'bg-white/10']">
-                                        <span :class="['absolute top-1 w-4 h-4 rounded-full bg-white transition-all', form.attributes[attr.key] ? 'left-7' : 'left-1']"></span>
-                                    </button>
                                 </div>
                             </div>
                         </div>
