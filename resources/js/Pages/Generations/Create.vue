@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { ref, computed, watch } from 'vue'
+import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
@@ -117,6 +118,27 @@ const submit = () => {
         forceFormData: true,
     })
 }
+
+// Prompt enhancer
+const enhancing = ref(false)
+const enhanceError = ref(null)
+
+async function enhancePrompt() {
+    if (!form.prompt.trim()) return
+    enhancing.value = true
+    enhanceError.value = null
+    try {
+        const { data } = await axios.post(route('prompt.enhance'), {
+            prompt: form.prompt,
+            type: form.type,
+        })
+        if (data.enhanced) form.prompt = data.enhanced
+    } catch {
+        enhanceError.value = 'Could not enhance prompt. Try again.'
+    } finally {
+        enhancing.value = false
+    }
+}
 </script>
 
 <template>
@@ -182,6 +204,20 @@ const submit = () => {
                                 required
                             ></textarea>
                             <div v-if="form.errors.prompt" class="mt-2 text-sm text-rose-400">{{ form.errors.prompt }}</div>
+
+                            <!-- Enhance button -->
+                            <div class="mt-3 flex items-center gap-3">
+                                <button type="button" @click="enhancePrompt" :disabled="enhancing || !form.prompt.trim()"
+                                    class="flex items-center gap-2 text-xs bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-400 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40">
+                                    <svg v-if="enhancing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                    </svg>
+                                    <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    {{ enhancing ? 'Enhancing...' : 'Enhance with AI' }}
+                                </button>
+                                <span v-if="enhanceError" class="text-xs text-rose-400">{{ enhanceError }}</span>
+                            </div>
 
                             <!-- Suggestions -->
                             <div class="mt-4">

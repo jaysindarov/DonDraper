@@ -19,10 +19,6 @@ const statusColor = (status) => {
         <template #header>
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold text-white">Dashboard</h2>
-                <Link :href="route('generations.create')" class="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-violet-500/25 text-sm">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    New Generation
-                </Link>
             </div>
         </template>
 

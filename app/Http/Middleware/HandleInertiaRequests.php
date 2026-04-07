@@ -33,7 +33,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user'     => $request->user(),
+                'is_admin' => (bool) $request->user()?->is_admin,
             ],
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),

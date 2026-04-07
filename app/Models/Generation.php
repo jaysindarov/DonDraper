@@ -32,14 +32,17 @@ class Generation extends Model
         'credits_used',
         'error_message',
         'metadata',
+        'is_public',
+        'team_id',
     ];
 
     protected function casts(): array
     {
         return [
-            'attributes' => 'array',
-            'metadata' => 'array',
+            'attributes'        => 'array',
+            'metadata'          => 'array',
             'reference_persons' => 'array',
+            'is_public'         => 'boolean',
         ];
     }
 

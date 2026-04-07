@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\ReplicateImageProvider;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Queue\Queueable;
@@ -13,9 +14,15 @@ class ProcessImageGeneration implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 2;
-    public int $timeout = 180;
+    // High tries + retryUntil for Replicate polling; OpenAI jobs finish in one run
+    public int $tries = 100;
+    public int $timeout = 120;
     public int $backoff = 10;
+
+    public function retryUntil(): \DateTime
+    {
+        return now()->addMinutes(10);
+    }
 
     public function __construct(
         public readonly \App\Models\Generation $generation
@@ -26,7 +33,7 @@ class ProcessImageGeneration implements ShouldQueue
         return [new WithoutOverlapping($this->generation->id)];
     }
 
-    public function handle(): void
+    public function handle(ReplicateImageProvider $replicate): void
     {
         $this->generation->refresh();
 
@@ -34,6 +41,15 @@ class ProcessImageGeneration implements ShouldQueue
             return;
         }
 
+        $model = $this->generation->model ?? 'gpt-image-1';
+
+        // ── Replicate async polling flow ──────────────────────────────────────
+        if ($replicate->isReplicateModel($model)) {
+            $this->handleReplicate($replicate, $model);
+            return;
+        }
+
+        // ── OpenAI synchronous flow ───────────────────────────────────────────
         $this->generation->update(['status' => 'processing']);
 
         try {
@@ -56,6 +72,64 @@ class ProcessImageGeneration implements ShouldQueue
             $this->markFailed('Database error: ' . $e->getMessage());
             $this->fail($e);
         }
+    }
+
+    private function handleReplicate(ReplicateImageProvider $replicate, string $model): void
+    {
+        $metadata = $this->generation->metadata ?? [];
+
+        // First run: submit prediction
+        if (empty($metadata['replicate_prediction_id'])) {
+            $this->generation->update(['status' => 'processing']);
+            try {
+                $prompt = $this->buildPrompt();
+                $predictionId = $replicate->submit($model, $prompt, $this->replicateOptions());
+                $this->generation->update([
+                    'metadata' => array_merge($metadata, ['replicate_prediction_id' => $predictionId]),
+                ]);
+            } catch (\Throwable $e) {
+                $this->markFailed($e->getMessage());
+                $this->fail($e);
+                return;
+            }
+            $this->release(5);
+            return;
+        }
+
+        // Subsequent runs: poll
+        try {
+            $result = $replicate->poll($metadata['replicate_prediction_id']);
+        } catch (\Throwable $e) {
+            $this->release(5);
+            return;
+        }
+
+        if ($result['status'] === 'processing') {
+            $this->release(5);
+            return;
+        }
+
+        if ($result['status'] === 'failed') {
+            $this->markFailed($result['error'] ?? 'Replicate prediction failed.');
+            $this->fail(new \RuntimeException($result['error'] ?? 'Replicate failed'));
+            return;
+        }
+
+        // Completed — download and store
+        $localUrl = $this->storeFromUrl($result['url']);
+        $this->generation->update([
+            'status'     => 'completed',
+            'result_url' => $localUrl,
+        ]);
+    }
+
+    private function replicateOptions(): array
+    {
+        $attrs = $this->generation->attributes ?? [];
+        return array_filter([
+            'width'  => isset($attrs['resolution']) ? (int) explode('x', $attrs['resolution'])[0] : null,
+            'height' => isset($attrs['resolution']) ? (int) explode('x', $attrs['resolution'])[1] : null,
+        ]);
     }
 
     // ─── Entry point ──────────────────────────────────────────────────────────

@@ -163,6 +163,15 @@ class GenerationController extends Controller
         ]);
     }
 
+    public function togglePublic(Generation $generation)
+    {
+        //$this->authorize('update', $generation);
+
+        $generation->update(['is_public' => !$generation->is_public]);
+
+        return back()->with('success', $generation->is_public ? 'Added to public gallery.' : 'Removed from public gallery.');
+    }
+
     public function destroy(Generation $generation)
     {
         //$this->authorize('delete', $generation);
