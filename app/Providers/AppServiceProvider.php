@@ -8,6 +8,8 @@ use App\Contracts\VideoGenerationProvider;
 use App\Services\VideoGeneration\ElevenLabsVideoProvider;
 use App\Services\VideoGeneration\GoogleVeoProvider;
 use App\Services\VideoGeneration\OpenAiSoraProvider;
+use App\Auth\CustomSessionGuard;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,5 +31,20 @@ final class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // Replace the default session guard with our custom one so remember-me
+        // cookies expire after 1 day instead of Laravel's default ~5 years.
+        Auth::extend('session', function ($app, $name, array $config) {
+            $guard = new CustomSessionGuard(
+                $name,
+                Auth::createUserProvider($config['provider']),
+                $app['session.store'],
+                $app['request'],
+            );
+
+            $app->refresh('request', $guard, 'setRequest');
+
+            return $guard;
+        });
     }
 }
