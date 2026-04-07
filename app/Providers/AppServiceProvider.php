@@ -42,6 +42,7 @@ final class AppServiceProvider extends ServiceProvider
                 $app['request'],
             );
 
+            $guard->setCookieJar($app['cookie']);
             $app->refresh('request', $guard, 'setRequest');
 
             return $guard;
