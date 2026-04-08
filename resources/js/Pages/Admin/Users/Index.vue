@@ -31,9 +31,9 @@ function doSearch() {
             <!-- Search -->
             <form @submit.prevent="doSearch" class="flex gap-3">
                 <input v-model="searchQuery" type="text" placeholder="Search name or email..."
-                    class="flex-1 bg-gray-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-violet-500/50" />
+                    class="flex-1 bg-gray-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-sky-500/50" />
                 <button type="submit"
-                    class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
+                    class="bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
                     Search
                 </button>
             </form>
@@ -58,13 +58,13 @@ function doSearch() {
                             <td class="px-5 py-3 text-gray-400">{{ user.email }}</td>
                             <td class="px-5 py-3">
                                 <span :class="['text-xs px-2 py-0.5 rounded-full font-medium',
-                                    user.plan === 'enterprise' ? 'bg-fuchsia-500/20 text-fuchsia-300' :
-                                    user.plan === 'pro' ? 'bg-violet-500/20 text-violet-300' :
+                                    user.plan === 'enterprise' ? 'bg-cyan-500/20 text-cyan-300' :
+                                    user.plan === 'pro' ? 'bg-sky-500/20 text-sky-300' :
                                     'bg-gray-700/50 text-gray-400']">
                                     {{ user.plan ?? 'free' }}
                                 </span>
                             </td>
-                            <td class="px-5 py-3 text-violet-400 font-medium">{{ user.credits }}</td>
+                            <td class="px-5 py-3 text-sky-400 font-medium">{{ user.credits }}</td>
                             <td class="px-5 py-3 text-gray-400">{{ user.generations_count }}</td>
                             <td class="px-5 py-3">
                                 <span v-if="user.is_admin" class="text-xs text-emerald-400">✓</span>
@@ -72,7 +72,7 @@ function doSearch() {
                             </td>
                             <td class="px-5 py-3 text-right">
                                 <Link :href="route('admin.users.edit', user.id)"
-                                    class="text-xs text-violet-400 hover:text-violet-300 transition-colors">
+                                    class="text-xs text-sky-400 hover:text-sky-300 transition-colors">
                                     Edit
                                 </Link>
                             </td>
@@ -86,7 +86,7 @@ function doSearch() {
                 <Link v-for="link in users.links" :key="link.label"
                     :href="link.url ?? '#'"
                     :class="['text-xs px-3 py-1.5 rounded-lg transition-all',
-                        link.active ? 'bg-violet-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10',
+                        link.active ? 'bg-sky-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10',
                         !link.url ? 'opacity-40 pointer-events-none' : '']"
                     v-html="link.label" />
             </div>

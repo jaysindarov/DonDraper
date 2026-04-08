@@ -38,13 +38,13 @@ function submit() {
                     <div>
                         <label class="block text-sm text-gray-400 mb-1.5">Credits</label>
                         <input v-model="form.credits" type="number" min="0"
-                            class="w-full bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/50" />
+                            class="w-full bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500/50" />
                     </div>
 
                     <div>
                         <label class="block text-sm text-gray-400 mb-1.5">Plan</label>
                         <select v-model="form.plan"
-                            class="w-full bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/50">
+                            class="w-full bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-sky-500/50">
                             <option value="free">Free</option>
                             <option value="pro">Pro</option>
                             <option value="enterprise">Enterprise</option>
@@ -53,7 +53,7 @@ function submit() {
 
                     <div class="flex items-center gap-3">
                         <input v-model="form.is_admin" type="checkbox" id="is_admin"
-                            class="w-4 h-4 rounded border-white/20 bg-gray-800 text-violet-500 focus:ring-violet-500" />
+                            class="w-4 h-4 rounded border-white/20 bg-gray-800 text-sky-500 focus:ring-violet-500" />
                         <label for="is_admin" class="text-sm text-gray-400">Admin access</label>
                     </div>
 
@@ -62,7 +62,7 @@ function submit() {
                     </p>
 
                     <button type="submit" :disabled="form.processing"
-                        class="w-full bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-all">
+                        class="w-full bg-gradient-to-r from-sky-500 to-cyan-600 hover:from-sky-400 hover:to-cyan-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-all">
                         Save Changes
                     </button>
                 </form>

@@ -57,9 +57,9 @@ function deleteTeam() {
                 <h3 class="text-sm font-semibold text-white">Invite Member</h3>
                 <form @submit.prevent="invite" class="flex gap-3">
                     <input v-model="inviteForm.email" type="email" placeholder="colleague@company.com"
-                        class="flex-1 bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/50" />
+                        class="flex-1 bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-sky-500/50" />
                     <button type="submit" :disabled="inviteForm.processing"
-                        class="bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
+                        class="bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
                         Send Invite
                     </button>
                 </form>

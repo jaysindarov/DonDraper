@@ -31,8 +31,26 @@ Route::post('/stripe/webhook', [\App\Http\Controllers\WebhookController::class, 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/gallery', [GalleryController::class, 'index'])->name('gallery');
     Route::get('/dashboard', function () {
+        $imageModels = collect(config('ai_models'))
+            ->map(fn ($cfg, $id) => [
+                'id'          => $id,
+                'label'       => $cfg['label'],
+                'provider'    => $cfg['provider'],
+                'description' => $cfg['description'],
+                'recommended' => $cfg['recommended'] ?? false,
+            ])
+            ->values();
+
+        $videoModels = collect([
+            ['id' => 'veo-3.1',         'label' => 'Veo 3.1',     'provider' => 'Google',     'description' => 'Google Veo 3.1. Cinematic quality video.',       'recommended' => true],
+            ['id' => 'sora-1',          'label' => 'Sora',        'provider' => 'OpenAI',     'description' => 'OpenAI Sora. Creative, high-fidelity video.',    'recommended' => false],
+            ['id' => 'elevenlabs-video', 'label' => 'ElevenLabs', 'provider' => 'ElevenLabs', 'description' => 'ElevenLabs video generation with audio support.', 'recommended' => false],
+        ]);
+
         return Inertia::render('Dashboard', [
-            'recentGenerations' => auth()->user()->generations()->latest()->limit(8)->get(),
+            'recentGenerations' => auth()->user()->generations()->latest()->limit(9)->get(),
+            'imageModels' => $imageModels,
+            'videoModels' => $videoModels,
             'stats' => [
                 'total'     => auth()->user()->generations()->count(),
                 'completed' => auth()->user()->generations()->where('status', 'completed')->count(),

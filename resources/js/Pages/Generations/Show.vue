@@ -8,16 +8,14 @@ const props = defineProps({
 })
 
 const statusConfig = {
-    completed: { color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-500/30', label: 'Completed' },
-    processing: { color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-500/30', label: 'Processing...' },
-    pending: { color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-500/30', label: 'Queued' },
-    failed: { color: 'text-rose-400', bg: 'bg-rose-400/10 border-rose-500/30', label: 'Failed' },
+    completed: { color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-500/25', label: 'Completed' },
+    processing: { color: 'text-sky-400', bg: 'bg-sky-400/10 border-sky-500/25', label: 'Processing...' },
+    pending: { color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-500/25', label: 'Queued' },
+    failed: { color: 'text-rose-400', bg: 'bg-rose-400/10 border-rose-500/25', label: 'Failed' },
 }
 
 const status = computed(() => statusConfig[props.generation.status] || statusConfig.pending)
 const isInProgress = computed(() => ['pending', 'processing'].includes(props.generation.status))
-
-// Steps from metadata — set by the job as it runs
 const steps = computed(() => props.generation.metadata?.steps ?? [])
 
 let pollInterval = null
@@ -34,7 +32,6 @@ onUnmounted(() => {
     if (pollInterval) clearInterval(pollInterval)
 })
 
-// Stop polling once job finishes
 const stopPollingWhenDone = () => {
     if (!isInProgress.value && pollInterval) {
         clearInterval(pollInterval)
@@ -45,13 +42,11 @@ const stopPollingWhenDone = () => {
 router.on('finish', stopPollingWhenDone)
 
 const isVideo = computed(() => props.generation.type === 'video')
+const pollMs = computed(() => isVideo.value ? 5000 : 3000)
 
 const download = () => {
     window.location.href = route('generations.download', props.generation.id)
 }
-
-// Video polling interval — videos take longer, poll every 5s
-const pollMs = computed(() => isVideo.value ? 5000 : 3000)
 
 const togglePublicForm = useForm({})
 const togglePublic = () => {
@@ -64,40 +59,32 @@ const togglePublic = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-3">
-                <Link :href="route('generations.index')" class="text-gray-400 hover:text-white transition-colors">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                <Link :href="route('generations.index')" class="text-gray-400 hover:text-white transition-colors p-1">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </Link>
-                <h2 class="text-xl font-bold text-white">Generation #{{ generation.id }}</h2>
+                <h2 class="text-base font-bold text-white">Generation #{{ generation.id }}</h2>
                 <span :class="['text-xs px-2.5 py-1 rounded-full border font-medium', status.bg, status.color]">{{ status.label }}</span>
-                <span v-if="isInProgress" class="text-xs text-gray-500 animate-pulse">Auto-refreshing...</span>
+                <span v-if="isInProgress" class="text-xs text-gray-600 animate-pulse">Auto-refreshing...</span>
             </div>
         </template>
 
-        <div class="py-8 px-6 max-w-6xl mx-auto">
-            <div class="grid lg:grid-cols-2 gap-8">
-                <!-- Result Display (Image or Video) -->
+        <div class="py-7 px-6 max-w-6xl mx-auto">
+            <div class="grid lg:grid-cols-2 gap-7">
+                <!-- Result Display -->
                 <div class="space-y-4">
-                    <div :class="['rounded-3xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 border border-white/5 relative', isVideo ? 'aspect-video' : 'aspect-square']">
+                    <div :class="['rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 border border-white/5 relative', isVideo ? 'aspect-video' : 'aspect-square']">
 
-                        <!-- VIDEO player -->
                         <video v-if="isVideo && generation.result_url"
-                            :src="generation.result_url"
-                            controls
-                            loop
-                            playsinline
-                            class="w-full h-full object-contain bg-black"
-                        ></video>
+                            :src="generation.result_url" controls loop playsinline
+                            class="w-full h-full object-contain bg-black" />
 
-                        <!-- IMAGE -->
                         <img v-else-if="!isVideo && generation.result_url"
-                            :src="generation.result_url"
-                            :alt="generation.prompt"
+                            :src="generation.result_url" :alt="generation.prompt"
                             class="w-full h-full object-cover" />
 
-                        <!-- Loading / failed states -->
                         <div v-else class="w-full h-full flex flex-col items-center justify-center gap-4 p-6">
                             <div v-if="isInProgress" class="text-center">
-                                <svg class="w-12 h-12 text-violet-400 animate-spin mx-auto" fill="none" viewBox="0 0 24 24">
+                                <svg class="w-10 h-10 text-sky-400 animate-spin mx-auto" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                 </svg>
@@ -106,29 +93,31 @@ const togglePublic = () => {
                                 </p>
                             </div>
                             <div v-else-if="generation.status === 'failed'" class="text-center">
-                                <div class="text-5xl mb-4">❌</div>
-                                <p class="text-rose-400 font-medium mb-2">Generation Failed</p>
+                                <div class="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-7 h-7 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </div>
+                                <p class="text-rose-400 font-medium text-sm mb-2">Generation Failed</p>
                                 <p v-if="generation.error_message" class="text-xs text-gray-500 max-w-sm">{{ generation.error_message }}</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Progress Steps — shown below the image box while in progress -->
-                    <div v-if="isInProgress && steps.length > 0" class="bg-gray-900/50 border border-white/5 rounded-2xl p-5">
+                    <!-- Progress Steps -->
+                    <div v-if="isInProgress && steps.length > 0" class="bg-[#0A0E1A] border border-white/6 rounded-2xl p-5">
                         <div class="space-y-2.5">
                             <div v-for="(step, i) in steps" :key="i" class="flex items-center gap-3">
                                 <div class="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                                     <svg v-if="step.status === 'done'" class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                                     </svg>
-                                    <svg v-else-if="step.status === 'running'" class="w-4 h-4 text-violet-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <svg v-else-if="step.status === 'running'" class="w-4 h-4 text-sky-400 animate-spin" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                                     </svg>
                                     <svg v-else-if="step.status === 'failed'" class="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                     </svg>
-                                    <div v-else class="w-3 h-3 rounded-full border border-gray-600"></div>
+                                    <div v-else class="w-3 h-3 rounded-full border border-gray-700"></div>
                                 </div>
                                 <span :class="[
                                     'text-sm transition-colors',
@@ -145,20 +134,20 @@ const togglePublic = () => {
                     <!-- Actions -->
                     <div v-if="generation.result_url" class="flex gap-3 flex-wrap">
                         <button @click="download"
-                            class="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-violet-500/25">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            class="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-cyan-600 hover:from-sky-400 hover:to-cyan-500 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-sky-500/20 text-sm">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             Download {{ isVideo ? 'MP4' : 'PNG' }}
                         </button>
                         <Link :href="route('generations.create')"
-                            class="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold py-3 px-5 rounded-xl transition-all">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            class="flex items-center gap-2 bg-white/4 hover:bg-white/8 border border-white/8 text-white font-semibold py-3 px-4 rounded-xl transition-all text-sm">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             New
                         </Link>
                         <button @click="togglePublic"
-                            :class="['flex items-center gap-2 border font-semibold py-3 px-5 rounded-xl transition-all text-sm',
+                            :class="['flex items-center gap-2 border font-semibold py-3 px-4 rounded-xl transition-all text-sm',
                                 generation.is_public
-                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-400 hover:text-white']">
+                                    ? 'bg-emerald-500/8 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/15'
+                                    : 'bg-white/4 hover:bg-white/8 border-white/8 text-gray-400 hover:text-white']">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path v-if="generation.is_public" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                 <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
@@ -169,95 +158,93 @@ const togglePublic = () => {
                 </div>
 
                 <!-- Details -->
-                <div class="space-y-5">
-                    <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                        <h3 class="text-sm font-semibold text-gray-400 mb-3">Prompt</h3>
-                        <p class="text-white leading-relaxed">{{ generation.prompt }}</p>
-                        <div v-if="generation.negative_prompt" class="mt-4">
-                            <h3 class="text-sm font-semibold text-gray-400 mb-2">Negative Prompt</h3>
+                <div class="space-y-4">
+                    <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl p-5">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Prompt</h3>
+                        <p class="text-white leading-relaxed text-sm">{{ generation.prompt }}</p>
+                        <div v-if="generation.negative_prompt" class="mt-4 pt-4 border-t border-white/5">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Negative Prompt</h3>
                             <p class="text-gray-400 text-sm">{{ generation.negative_prompt }}</p>
                         </div>
                     </div>
 
                     <!-- Reference People -->
-                    <div v-if="generation.reference_persons?.length" class="bg-gray-900/50 border border-emerald-500/20 rounded-2xl p-6">
-                        <h3 class="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                    <div v-if="generation.reference_persons?.length" class="bg-[#0A0E1A] border border-emerald-500/15 rounded-2xl p-5">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                             <span>🧑‍🤝‍🧑</span> Reference People
                         </h3>
-                        <div class="flex gap-4">
+                        <div class="flex gap-3 flex-wrap">
                             <div v-for="person in generation.reference_persons" :key="person.path" class="flex flex-col items-center gap-2">
                                 <img :src="`/storage/${person.path}`" :alt="person.name"
-                                    class="w-20 h-20 object-cover rounded-xl border border-white/10" />
+                                    class="w-18 h-18 object-cover rounded-xl border border-white/10" style="width:72px;height:72px;" />
                                 <span class="text-xs text-gray-400 text-center">{{ person.name }}</span>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-600 mt-3">Analyzed with GPT-4o Vision · Generated with gpt-image-1 edits endpoint</p>
+                        <p class="text-[10px] text-gray-600 mt-3">Analyzed with GPT-4o Vision · Generated with gpt-image-1 edits endpoint</p>
                     </div>
 
                     <!-- Product Reference -->
                     <div v-if="generation.product_type || generation.product_image_path || generation.product_image_paths?.length"
-                        class="bg-gray-900/50 border border-violet-500/20 rounded-2xl p-6">
-                        <h3 class="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                        class="bg-[#0A0E1A] border border-sky-500/15 rounded-2xl p-5">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                             <span>📦</span> Product Reference
                             <span v-if="(generation.product_image_paths?.length ?? 0) > 1"
-                                class="ml-auto text-xs text-violet-400 font-normal">
+                                class="ml-auto text-xs text-sky-400 font-normal">
                                 {{ generation.product_image_paths.length }} angles
                             </span>
                         </h3>
 
-                        <!-- Multiple images grid -->
                         <div v-if="generation.product_image_paths?.length > 0" class="grid grid-cols-4 gap-2 mb-4">
                             <div v-for="(path, i) in generation.product_image_paths" :key="i" class="relative">
                                 <img :src="`/storage/${path}`" :alt="`Product angle ${i + 1}`"
-                                    class="w-full aspect-square object-cover rounded-xl border border-white/10" />
-                                <div class="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/60 text-gray-300 px-1.5 py-0.5 rounded">
+                                    class="w-full aspect-square object-cover rounded-xl border border-white/8" />
+                                <div class="absolute bottom-1 left-1 text-[9px] font-semibold bg-black/70 text-gray-300 px-1.5 py-0.5 rounded">
                                     {{ ['Front','Side','Back','Detail'][i] ?? `#${i+1}` }}
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Legacy single image fallback -->
                         <div v-else-if="generation.product_image_path" class="mb-4">
                             <img :src="`/storage/${generation.product_image_path}`" alt="Product"
-                                class="w-24 h-24 object-cover rounded-xl border border-white/10" />
+                                class="w-20 h-20 object-cover rounded-xl border border-white/8" />
                         </div>
 
-                        <div v-if="generation.product_type" class="text-sm font-medium text-violet-300 mb-1">{{ generation.product_type }}</div>
-                        <p class="text-xs text-gray-500">GPT-4o Vision analyzed each angle and combined the descriptions into the generation prompt.</p>
+                        <div v-if="generation.product_type" class="text-sm font-medium text-sky-300 mb-1">{{ generation.product_type }}</div>
+                        <p class="text-xs text-gray-600">GPT-4o Vision analyzed each angle and combined the descriptions into the generation prompt.</p>
                     </div>
 
-                    <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                        <h3 class="text-sm font-semibold text-gray-400 mb-4">Generation Settings</h3>
-                        <div class="space-y-3">
+                    <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl p-5">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Generation Settings</h3>
+                        <div class="space-y-2.5">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500">Model</span>
-                                <span class="text-white font-medium">{{ generation.model }}</span>
+                                <span class="text-white font-medium text-xs">{{ generation.model }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500">Type</span>
-                                <span class="text-white font-medium capitalize">{{ generation.type }}</span>
+                                <span class="text-white font-medium text-xs capitalize">{{ generation.type }}</span>
                             </div>
                             <div v-if="generation.width && generation.height" class="flex justify-between text-sm">
                                 <span class="text-gray-500">Resolution</span>
-                                <span class="text-white font-medium">{{ generation.width }}×{{ generation.height }}</span>
+                                <span class="text-white font-medium text-xs">{{ generation.width }}×{{ generation.height }}</span>
                             </div>
                             <div v-for="(val, key) in generation.attributes" :key="key" class="flex justify-between text-sm">
-                                <span class="text-gray-500 capitalize">{{ String(key).replace(/_/g, ' ') }}</span>
-                                <span class="text-white font-medium">{{ val }}</span>
+                                <span class="text-gray-500 capitalize text-xs">{{ String(key).replace(/_/g, ' ') }}</span>
+                                <span class="text-white font-medium text-xs">{{ val }}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6">
-                        <h3 class="text-sm font-semibold text-gray-400 mb-4">Metadata</h3>
-                        <div class="space-y-3 text-sm">
+                    <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl p-5">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Metadata</h3>
+                        <div class="space-y-2.5">
                             <div class="flex justify-between">
-                                <span class="text-gray-500">Credits Used</span>
-                                <span class="text-violet-400 font-medium">{{ generation.credits_used }}</span>
+                                <span class="text-xs text-gray-500">Credits Used</span>
+                                <span class="text-xs text-sky-400 font-medium">{{ generation.credits_used }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-gray-500">Created</span>
-                                <span class="text-white">{{ new Date(generation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</span>
+                                <span class="text-xs text-gray-500">Created</span>
+                                <span class="text-xs text-white">{{ new Date(generation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</span>
                             </div>
                         </div>
                     </div>

@@ -21,55 +21,63 @@ const submit = () => {
 
     <div class="min-h-screen bg-gray-950 text-white flex">
         <!-- Left Panel -->
-        <div class="hidden lg:flex flex-1 relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-br from-fuchsia-900/40 via-gray-950 to-violet-900/30"></div>
-            <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
-            <div class="absolute top-20 left-10 w-[500px] h-[500px] rounded-full bg-fuchsia-600/15 blur-[100px]"></div>
-            <div class="absolute bottom-10 right-10 w-[400px] h-[400px] rounded-full bg-violet-600/15 blur-[100px]"></div>
+        <div class="hidden lg:flex flex-1 relative overflow-hidden bg-[#070B14]">
+            <div class="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-transparent to-sky-900/15"></div>
+            <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:52px_52px]"></div>
+            <div class="absolute top-20 left-10 w-[500px] h-[500px] rounded-full bg-cyan-600/10 blur-[120px]"></div>
+            <div class="absolute bottom-10 right-10 w-[400px] h-[400px] rounded-full bg-sky-600/10 blur-[100px]"></div>
 
-            <div class="relative flex flex-col justify-center px-16 max-w-lg">
+            <div class="relative flex flex-col justify-center px-14 max-w-md">
                 <Link :href="route('home')" class="flex items-center gap-3 mb-16">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center font-black text-lg">D</div>
-                    <span class="text-xl font-bold">Don<span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Draper</span></span>
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center font-black">D</div>
+                    <span class="text-lg font-bold">Don<span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-400">Draper</span></span>
                 </Link>
 
-                <h2 class="text-4xl font-black mb-6 leading-tight">
+                <h2 class="text-4xl font-black mb-5 leading-tight">
                     Start creating<br>
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-violet-400">for free today.</span>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-400">for free today.</span>
                 </h2>
-                <p class="text-gray-400 text-lg mb-12">Join 150,000+ creators already using DonDraper to build stunning visuals.</p>
+                <p class="text-gray-400 mb-10 leading-relaxed">Join 150,000+ creators already using DonDraper to build stunning visuals.</p>
 
-                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
-                    <div class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400 mb-1">10 Free Credits</div>
+                <div class="bg-sky-500/8 border border-sky-500/20 rounded-2xl p-5 mb-8">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-xl bg-sky-500/15 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        <div class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-400">10 Free Credits</div>
+                    </div>
                     <p class="text-sm text-gray-400">Get 10 image generations on us when you create your account. No credit card required.</p>
                 </div>
 
                 <div class="space-y-3">
                     <div v-for="item in [
-                        { icon: '✅', text: 'No credit card required' },
-                        { icon: '✅', text: 'Access to all AI models' },
-                        { icon: '✅', text: 'Your creations, your rights' },
+                        { text: 'No credit card required' },
+                        { text: 'Access to all AI models' },
+                        { text: 'Your creations, your rights' },
                     ]" :key="item.text" class="flex items-center gap-3 text-sm text-gray-300">
-                        <span>{{ item.icon }}</span>
+                        <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                         {{ item.text }}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Panel - Register Form -->
-        <div class="flex-1 lg:max-w-md flex flex-col justify-center px-8 py-16 overflow-y-auto">
+        <!-- Right Panel -->
+        <div class="flex-1 lg:max-w-[420px] flex flex-col justify-center px-8 py-16 overflow-y-auto bg-gray-950">
             <div class="lg:hidden flex items-center gap-3 mb-10">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center font-black text-lg">D</div>
-                <span class="text-xl font-bold">Don<span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Draper</span></span>
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center font-black">D</div>
+                <span class="text-lg font-bold">Don<span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-400">Draper</span></span>
             </div>
 
-            <h1 class="text-3xl font-black mb-2">Create Account</h1>
-            <p class="text-gray-400 mb-8">Already have an account? <Link :href="route('login')" class="text-violet-400 hover:text-violet-300 font-medium">Sign in</Link></p>
+            <h1 class="text-2xl font-black mb-1.5 text-white">Create Account</h1>
+            <p class="text-gray-400 text-sm mb-8">
+                Already have an account?
+                <Link :href="route('login')" class="text-sky-400 hover:text-sky-300 font-medium transition-colors">Sign in</Link>
+            </p>
 
-            <form @submit.prevent="submit" class="space-y-5">
+            <form @submit.prevent="submit" class="space-y-4">
                 <div>
-                    <label for="name" class="block text-sm font-medium text-gray-300 mb-2">Full name</label>
+                    <label for="name" class="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Full name</label>
                     <input
                         id="name"
                         v-model="form.name"
@@ -78,13 +86,13 @@ const submit = () => {
                         autofocus
                         autocomplete="name"
                         placeholder="Don Draper"
-                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all"
+                        class="w-full bg-white/4 border border-white/8 focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/12 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all text-sm"
                     />
                     <InputError :message="form.errors.name" class="mt-2 text-sm text-rose-400" />
                 </div>
 
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email address</label>
+                    <label for="email" class="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Email address</label>
                     <input
                         id="email"
                         v-model="form.email"
@@ -92,13 +100,13 @@ const submit = () => {
                         required
                         autocomplete="username"
                         placeholder="you@example.com"
-                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all"
+                        class="w-full bg-white/4 border border-white/8 focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/12 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all text-sm"
                     />
                     <InputError :message="form.errors.email" class="mt-2 text-sm text-rose-400" />
                 </div>
 
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                    <label for="password" class="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Password</label>
                     <input
                         id="password"
                         v-model="form.password"
@@ -106,13 +114,13 @@ const submit = () => {
                         required
                         autocomplete="new-password"
                         placeholder="Min. 8 characters"
-                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all"
+                        class="w-full bg-white/4 border border-white/8 focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/12 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all text-sm"
                     />
                     <InputError :message="form.errors.password" class="mt-2 text-sm text-rose-400" />
                 </div>
 
                 <div>
-                    <label for="password_confirmation" class="block text-sm font-medium text-gray-300 mb-2">Confirm password</label>
+                    <label for="password_confirmation" class="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Confirm password</label>
                     <input
                         id="password_confirmation"
                         v-model="form.password_confirmation"
@@ -120,7 +128,7 @@ const submit = () => {
                         required
                         autocomplete="new-password"
                         placeholder="••••••••"
-                        class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all"
+                        class="w-full bg-white/4 border border-white/8 focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/12 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all text-sm"
                     />
                     <InputError :message="form.errors.password_confirmation" class="mt-2 text-sm text-rose-400" />
                 </div>
@@ -128,8 +136,7 @@ const submit = () => {
                 <button
                     type="submit"
                     :disabled="form.processing"
-                    class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02]"
-                >
+                    class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-cyan-600 hover:from-sky-400 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-sky-500/20 hover:shadow-sky-500/35 hover:scale-[1.02] mt-2">
                     <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -138,10 +145,10 @@ const submit = () => {
                 </button>
             </form>
 
-            <p class="mt-8 text-center text-sm text-gray-600">
+            <p class="mt-8 text-center text-xs text-gray-600">
                 By creating an account, you agree to our
-                <a href="#" class="text-gray-400 hover:text-white">Terms</a> and
-                <a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a>.
+                <a href="#" class="text-gray-500 hover:text-gray-300 transition-colors">Terms</a> and
+                <a href="#" class="text-gray-500 hover:text-gray-300 transition-colors">Privacy Policy</a>.
             </p>
         </div>
     </div>

@@ -47,7 +47,7 @@ const statusColors = {
             <!-- Filters -->
             <div class="flex gap-3">
                 <select v-model="statusFilter" @change="applyFilters"
-                    class="bg-gray-900/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-violet-500/50">
+                    class="bg-gray-900/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="processing">Processing</option>
@@ -55,7 +55,7 @@ const statusColors = {
                     <option value="failed">Failed</option>
                 </select>
                 <select v-model="typeFilter" @change="applyFilters"
-                    class="bg-gray-900/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-violet-500/50">
+                    class="bg-gray-900/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500/50">
                     <option value="">All Types</option>
                     <option value="image">Image</option>
                     <option value="video">Video</option>
@@ -104,7 +104,7 @@ const statusColors = {
                 <Link v-for="link in generations.links" :key="link.label"
                     :href="link.url ?? '#'"
                     :class="['text-xs px-3 py-1.5 rounded-lg transition-all',
-                        link.active ? 'bg-violet-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10',
+                        link.active ? 'bg-sky-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10',
                         !link.url ? 'opacity-40 pointer-events-none' : '']"
                     v-html="link.label" />
             </div>

@@ -63,9 +63,9 @@ function copyToken() {
                 <h3 class="text-sm font-semibold text-white">Create New Token</h3>
                 <form @submit.prevent="createToken" class="flex gap-3">
                     <input v-model="form.name" type="text" placeholder="Token name (e.g. My App)"
-                        class="flex-1 bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/50" />
+                        class="flex-1 bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-sky-500/50" />
                     <button type="submit" :disabled="form.processing"
-                        class="bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
+                        class="bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
                         Create
                     </button>
                 </form>
@@ -104,11 +104,11 @@ function copyToken() {
             <!-- API docs hint -->
             <div class="bg-gray-900/30 border border-white/5 rounded-2xl p-5 text-sm text-gray-500">
                 <p class="text-gray-400 font-medium mb-2">Using the API</p>
-                <p>Pass your token in the <code class="text-violet-400">Authorization</code> header:</p>
-                <code class="block mt-2 bg-black/30 text-violet-300 px-3 py-2 rounded-lg font-mono text-xs">
+                <p>Pass your token in the <code class="text-sky-400">Authorization</code> header:</p>
+                <code class="block mt-2 bg-black/30 text-sky-300 px-3 py-2 rounded-lg font-mono text-xs">
                     Authorization: Bearer YOUR_TOKEN
                 </code>
-                <p class="mt-2">Base URL: <code class="text-violet-400">/api/v1</code> — requires Pro or Enterprise plan.</p>
+                <p class="mt-2">Base URL: <code class="text-sky-400">/api/v1</code> — requires Pro or Enterprise plan.</p>
             </div>
         </div>
     </AuthenticatedLayout>

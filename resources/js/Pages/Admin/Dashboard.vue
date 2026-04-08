@@ -8,12 +8,12 @@ const props = defineProps({
 })
 
 const statCards = [
-    { label: 'Total Users', value: props.stats.total_users, color: 'text-violet-400' },
+    { label: 'Total Users', value: props.stats.total_users, color: 'text-sky-400' },
     { label: 'Total Generations', value: props.stats.total_generations, color: 'text-blue-400' },
     { label: 'Completed', value: props.stats.completed, color: 'text-emerald-400' },
     { label: 'Failed', value: props.stats.failed, color: 'text-rose-400' },
     { label: 'In Progress', value: props.stats.pending, color: 'text-yellow-400' },
-    { label: 'Credits Used', value: props.stats.total_credits_used, color: 'text-fuchsia-400' },
+    { label: 'Credits Used', value: props.stats.total_credits_used, color: 'text-cyan-400' },
 ]
 
 const statusColors = {

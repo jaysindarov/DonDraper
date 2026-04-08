@@ -147,7 +147,7 @@ async function enhancePrompt() {
                 </div>
                 <div class="flex items-center gap-2 text-sm">
                     <span class="text-gray-400">Credits:</span>
-                    <span class="font-bold text-violet-400">{{ credits }}</span>
+                    <span class="font-bold text-sky-400">{{ credits }}</span>
                 </div>
             </div>
         </template>
@@ -160,11 +160,11 @@ async function enhancePrompt() {
                     <div class="lg:col-span-3 space-y-3">
 
                         <!-- Type Selector -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-5">
+                        <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl p-5">
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Generation Type</label>
                             <div class="grid grid-cols-2 gap-3">
                                 <button type="button" @click="form.type = 'image'"
-                                    :class="['flex items-center gap-3 p-4 rounded-xl border-2 transition-all', form.type === 'image' ? 'border-violet-500 bg-violet-500/10 text-white' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20']">
+                                    :class="['flex items-center gap-3 p-4 rounded-xl border-2 transition-all', form.type === 'image' ? 'border-sky-500 bg-sky-500/10 text-white' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20']">
                                     <span class="text-2xl">🎨</span>
                                     <div class="text-left">
                                         <div class="font-semibold text-sm">Image</div>
@@ -172,7 +172,7 @@ async function enhancePrompt() {
                                     </div>
                                 </button>
                                 <button type="button" @click="form.type = 'video'"
-                                    :class="['flex items-center gap-3 p-4 rounded-xl border-2 transition-all', form.type === 'video' ? 'border-fuchsia-500 bg-fuchsia-500/10 text-white' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20']">
+                                    :class="['flex items-center gap-3 p-4 rounded-xl border-2 transition-all', form.type === 'video' ? 'border-cyan-500 bg-cyan-500/10 text-white' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20']">
                                     <span class="text-2xl">🎬</span>
                                     <div class="text-left">
                                         <div class="font-semibold text-sm">Video</div>
@@ -185,7 +185,7 @@ async function enhancePrompt() {
                         <!-- ── Accordion ──────────────────────────────────────── -->
 
                         <!-- Step 1: Prompt -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                        <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl overflow-hidden">
                             <button type="button" @click="toggle('prompt')"
                                 class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
                                 <div class="flex items-center gap-3">
@@ -195,7 +195,7 @@ async function enhancePrompt() {
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span v-if="!isOpen('prompt') && form.prompt"
-                                        class="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                                        class="text-xs text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full">
                                         {{ characterCount }} chars
                                     </span>
                                     <svg :class="['w-4 h-4 text-gray-500 transition-transform duration-200', isOpen('prompt') ? 'rotate-180' : '']"
@@ -218,7 +218,7 @@ async function enhancePrompt() {
                                                 rows="5"
                                                 maxlength="2000"
                                                 placeholder="Describe what you want to create in detail. The more specific, the better the result..."
-                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all resize-none text-sm"
+                                                class="w-full bg-white/5 border border-white/10 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/15 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none transition-all resize-none text-sm"
                                                 required
                                             ></textarea>
                                             <div v-if="form.errors.prompt" class="mt-2 text-sm text-rose-400">{{ form.errors.prompt }}</div>
@@ -227,7 +227,7 @@ async function enhancePrompt() {
                                         <!-- Enhance -->
                                         <div class="flex items-center gap-3">
                                             <button type="button" @click="enhancePrompt" :disabled="enhancing || !form.prompt.trim()"
-                                                class="flex items-center gap-2 text-xs bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-400 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40">
+                                                class="flex items-center gap-2 text-xs bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40">
                                                 <svg v-if="enhancing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -255,7 +255,7 @@ async function enhancePrompt() {
                         </div>
 
                         <!-- Step 2: Negative Prompt -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                        <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl overflow-hidden">
                             <button type="button" @click="toggle('negative')"
                                 class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
                                 <div class="flex items-center gap-3">
@@ -290,7 +290,7 @@ async function enhancePrompt() {
                         </div>
 
                         <!-- Step 3: Reference People -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                        <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl overflow-hidden">
                             <button type="button" @click="toggle('people')"
                                 class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
                                 <div class="flex items-center gap-3">
@@ -322,14 +322,14 @@ async function enhancePrompt() {
                                                 <button v-if="person1Preview" type="button" @click="clearPerson(1)" class="text-xs text-rose-400 hover:text-rose-300 transition-colors">Remove</button>
                                             </div>
                                             <input v-model="form.person_1_name" type="text" placeholder="Name or label (e.g. John, Model A)" maxlength="100"
-                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
+                                                class="w-full bg-white/5 border border-white/10 focus:border-sky-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
 
                                             <div v-if="!person1Preview"
-                                                class="relative border-2 border-dashed border-white/10 hover:border-violet-500/40 rounded-xl transition-all cursor-pointer group"
+                                                class="relative border-2 border-dashed border-white/10 hover:border-sky-500/40 rounded-xl transition-all cursor-pointer group"
                                                 @click="$refs.person1Input.click()">
                                                 <div class="flex items-center gap-3 px-4 py-4">
-                                                    <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-violet-500/10 flex items-center justify-center flex-shrink-0 transition-all">
-                                                        <svg class="w-5 h-5 text-gray-500 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                                    <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-sky-500/10 flex items-center justify-center flex-shrink-0 transition-all">
+                                                        <svg class="w-5 h-5 text-gray-500 group-hover:text-sky-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                                     </div>
                                                     <div>
                                                         <p class="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Upload a clear photo of their face</p>
@@ -352,7 +352,7 @@ async function enhancePrompt() {
                                         <!-- Person 2 -->
                                         <div v-if="!showPerson2 && !person2Preview">
                                             <button type="button" @click="showPerson2 = true"
-                                                class="flex items-center gap-2 text-sm text-gray-500 hover:text-violet-400 transition-colors">
+                                                class="flex items-center gap-2 text-sm text-gray-500 hover:text-sky-400 transition-colors">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                                 Add a 2nd person
                                             </button>
@@ -364,14 +364,14 @@ async function enhancePrompt() {
                                                 <button type="button" @click="clearPerson(2)" class="text-xs text-rose-400 hover:text-rose-300 transition-colors">Remove</button>
                                             </div>
                                             <input v-model="form.person_2_name" type="text" placeholder="Name or label (e.g. Jane, Model B)" maxlength="100"
-                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
+                                                class="w-full bg-white/5 border border-white/10 focus:border-sky-500 rounded-xl px-4 py-2 text-white placeholder-gray-600 outline-none transition-all text-sm" />
 
                                             <div v-if="!person2Preview"
-                                                class="relative border-2 border-dashed border-white/10 hover:border-violet-500/40 rounded-xl transition-all cursor-pointer group"
+                                                class="relative border-2 border-dashed border-white/10 hover:border-sky-500/40 rounded-xl transition-all cursor-pointer group"
                                                 @click="$refs.person2Input.click()">
                                                 <div class="flex items-center gap-3 px-4 py-4">
-                                                    <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-violet-500/10 flex items-center justify-center flex-shrink-0 transition-all">
-                                                        <svg class="w-5 h-5 text-gray-500 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                                    <div class="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-sky-500/10 flex items-center justify-center flex-shrink-0 transition-all">
+                                                        <svg class="w-5 h-5 text-gray-500 group-hover:text-sky-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                                     </div>
                                                     <div>
                                                         <p class="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Upload a clear photo of their face</p>
@@ -402,7 +402,7 @@ async function enhancePrompt() {
                         </div>
 
                         <!-- Step 4: Product Reference -->
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl overflow-hidden">
+                        <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl overflow-hidden">
                             <button type="button" @click="toggle('product')"
                                 class="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
                                 <div class="flex items-center gap-3">
@@ -412,7 +412,7 @@ async function enhancePrompt() {
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span v-if="!isOpen('product') && (form.product_images.length > 0 || form.product_type)"
-                                        class="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                                        class="text-xs text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full">
                                         {{ form.product_images.length > 0 ? `${form.product_images.length} image${form.product_images.length > 1 ? 's' : ''}` : form.product_type }}
                                     </span>
                                     <svg :class="['w-4 h-4 text-gray-500 transition-transform duration-200', isOpen('product') ? 'rotate-180' : '']"
@@ -435,7 +435,7 @@ async function enhancePrompt() {
                                                 type="text"
                                                 placeholder="e.g. Coffee mug, Running shoe, Perfume bottle..."
                                                 maxlength="100"
-                                                class="w-full bg-white/5 border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 outline-none transition-all text-sm"
+                                                class="w-full bg-white/5 border border-white/10 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/15 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 outline-none transition-all text-sm"
                                             />
                                         </div>
 
@@ -462,12 +462,12 @@ async function enhancePrompt() {
                                                 </div>
 
                                                 <div v-if="form.product_images.length < MAX_PRODUCT_IMAGES"
-                                                    class="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/40 flex flex-col items-center justify-center gap-1 cursor-pointer group transition-all"
+                                                    class="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-sky-500/40 flex flex-col items-center justify-center gap-1 cursor-pointer group transition-all"
                                                     @click="$refs.productImageInput.click()">
-                                                    <svg class="w-5 h-5 text-gray-600 group-hover:text-violet-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <svg class="w-5 h-5 text-gray-600 group-hover:text-sky-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                                     </svg>
-                                                    <span class="text-[10px] text-gray-600 group-hover:text-violet-400 transition-colors font-medium">
+                                                    <span class="text-[10px] text-gray-600 group-hover:text-sky-400 transition-colors font-medium">
                                                         {{ form.product_images.length === 0 ? 'Add photo' : 'Add angle' }}
                                                     </span>
                                                 </div>
@@ -482,9 +482,9 @@ async function enhancePrompt() {
                                         </div>
 
                                         <!-- Notice -->
-                                        <div v-if="form.product_images.length > 0 || form.product_type" class="flex items-start gap-2 bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
-                                            <svg class="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            <p class="text-xs text-violet-300">
+                                        <div v-if="form.product_images.length > 0 || form.product_type" class="flex items-start gap-2 bg-sky-500/5 border border-sky-500/20 rounded-xl p-3">
+                                            <svg class="w-4 h-4 text-sky-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <p class="text-xs text-sky-300">
                                                 Each product image is analyzed by GPT-4o Vision.
                                                 <span v-if="form.product_images.length > 1"> {{ form.product_images.length }} angles uploaded — higher accuracy.</span>
                                             </p>
@@ -499,7 +499,7 @@ async function enhancePrompt() {
 
                     <!-- Right: Preview & Submit -->
                     <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-gray-900/50 border border-white/5 rounded-2xl p-6 sticky top-24">
+                        <div class="bg-[#0A0E1A] border border-white/6 rounded-2xl p-6 sticky top-24">
                             <!-- Model Picker -->
                             <div class="mb-6">
                                 <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">AI Model</label>
@@ -509,17 +509,17 @@ async function enhancePrompt() {
                                         @click="form.model = m.id"
                                         :class="['w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left',
                                             form.model === m.id
-                                                ? 'border-violet-500 bg-violet-500/10'
+                                                ? 'border-sky-500 bg-sky-500/10'
                                                 : 'border-white/8 bg-white/3 hover:border-white/15']">
                                         <div :class="['w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all',
-                                            form.model === m.id ? 'border-violet-500' : 'border-white/20']">
-                                            <div v-if="form.model === m.id" class="w-2 h-2 rounded-full bg-violet-500"></div>
+                                            form.model === m.id ? 'border-sky-500' : 'border-white/20']">
+                                            <div v-if="form.model === m.id" class="w-2 h-2 rounded-full bg-sky-500"></div>
                                         </div>
                                         <div class="min-w-0 flex-1">
                                             <div class="flex items-center gap-2 flex-wrap">
                                                 <span :class="['text-sm font-semibold', form.model === m.id ? 'text-white' : 'text-gray-300']">{{ m.label }}</span>
                                                 <span class="text-xs text-gray-600">{{ m.provider }}</span>
-                                                <span v-if="m.recommended" class="text-[10px] font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">
+                                                <span v-if="m.recommended" class="text-[10px] font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded">
                                                     Recommended
                                                 </span>
                                             </div>
@@ -537,7 +537,7 @@ async function enhancePrompt() {
                                 {{ form.errors.credits }}
                             </div>
 
-                            <div v-if="form.type === 'video'" class="bg-fuchsia-500/5 border border-fuchsia-500/20 rounded-xl p-3 mb-3 text-xs text-fuchsia-300 flex items-start gap-2">
+                            <div v-if="form.type === 'video'" class="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-3 mb-3 text-xs text-cyan-300 flex items-start gap-2">
                                 <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 Video generation takes 2–10 minutes. You'll see a live status update on the result page.
                             </div>
@@ -545,7 +545,7 @@ async function enhancePrompt() {
                             <button
                                 type="submit"
                                 :disabled="form.processing || !form.prompt || credits < creditCost"
-                                class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02]"
+                                class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-cyan-600 hover:from-sky-400 hover:to-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:scale-[1.02]"
                             >
                                 <svg v-if="form.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -557,7 +557,7 @@ async function enhancePrompt() {
                             </button>
 
                             <p class="text-center text-xs text-gray-600 mt-3">
-                                You have <span class="text-violet-400 font-medium">{{ credits }}</span> credits remaining
+                                You have <span class="text-sky-400 font-medium">{{ credits }}</span> credits remaining
                             </p>
                         </div>
                     </div>

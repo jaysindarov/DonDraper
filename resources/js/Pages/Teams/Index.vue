@@ -27,13 +27,13 @@ function create() {
 
         <div class="py-8 px-6 max-w-4xl mx-auto space-y-6">
             <!-- Current team banner -->
-            <div v-if="currentTeam" class="bg-violet-500/10 border border-violet-500/20 rounded-2xl p-4 flex items-center justify-between">
+            <div v-if="currentTeam" class="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-violet-400 font-medium">Active workspace</p>
+                    <p class="text-xs text-sky-400 font-medium">Active workspace</p>
                     <p class="text-white font-semibold mt-0.5">{{ currentTeam.name }}</p>
                 </div>
                 <Link :href="route('teams.show', currentTeam.id)"
-                    class="text-sm text-violet-400 hover:text-violet-300 transition-colors">
+                    class="text-sm text-sky-400 hover:text-sky-300 transition-colors">
                     View →
                 </Link>
             </div>
@@ -51,7 +51,7 @@ function create() {
                             <button type="submit"
                                 :class="['text-xs px-3 py-1.5 rounded-lg border transition-all',
                                     currentTeam?.id === team.id
-                                        ? 'border-violet-500/30 text-violet-400 bg-violet-500/10'
+                                        ? 'border-sky-500/30 text-sky-400 bg-sky-500/10'
                                         : 'border-white/10 text-gray-400 hover:text-white hover:border-white/20']">
                                 {{ currentTeam?.id === team.id ? 'Active' : 'Switch' }}
                             </button>
@@ -80,9 +80,9 @@ function create() {
                     <h3 class="text-white font-semibold">Create Team</h3>
                     <form @submit.prevent="create" class="flex gap-3">
                         <input v-model="form.name" type="text" placeholder="Team name..."
-                            class="flex-1 bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/50" />
+                            class="flex-1 bg-gray-800/50 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-sky-500/50" />
                         <button type="submit" :disabled="form.processing"
-                            class="bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
+                            class="bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all">
                             Create
                         </button>
                         <button type="button" @click="showCreate = false"
