@@ -39,6 +39,7 @@ const userGradient = computed(() => {
 })
 
 const userInitial = computed(() => page.props.auth?.user?.name?.charAt(0).toUpperCase() ?? '?')
+const userAvatar = computed(() => page.props.auth?.user?.avatar ? `/storage/${page.props.auth.user.avatar}` : null)
 const credits = computed(() => page.props.auth?.credits ?? 0)
 </script>
 
@@ -80,18 +81,18 @@ const credits = computed(() => page.props.auth?.credits ?? 0)
                 <!-- Right: Credits + Avatar -->
                 <div class="flex items-center gap-2.5">
                     <!-- Credits -->
-                    <Link :href="route('billing')"
-                        class="hidden sm:flex items-center gap-1.5 bg-white/5 hover:bg-white/8 border border-white/8 hover:border-white/15 rounded-xl px-3 py-1.5 transition-all group">
+                    <div class="hidden sm:flex items-center gap-1.5 bg-white/5 border border-white/8 rounded-xl px-3 py-1.5">
                         <svg class="w-3.5 h-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                         <span class="text-sm font-bold text-white">{{ credits }}</span>
                         <span class="text-xs text-gray-500">cr</span>
-                    </Link>
+                    </div>
 
                     <!-- Avatar Dropdown -->
                     <div class="relative">
                         <button @click="showUserMenu = !showUserMenu"
-                            :class="`w-8 h-8 rounded-full bg-gradient-to-br ${userGradient.from} ${userGradient.to} flex items-center justify-center text-xs font-bold ring-2 ring-offset-2 ring-offset-gray-950 ${userGradient.ring} transition-all hover:scale-105 shadow-lg ${userGradient.glow}`">
-                            {{ userInitial }}
+                            :class="`w-8 h-8 rounded-full ${!userAvatar ? 'bg-gradient-to-br ' + userGradient.from + ' ' + userGradient.to : ''} flex items-center justify-center text-xs font-bold ring-2 ring-offset-2 ring-offset-gray-950 ${userGradient.ring} transition-all hover:scale-105 shadow-lg ${userGradient.glow} overflow-hidden`">
+                            <img v-if="userAvatar" :src="userAvatar" class="w-full h-full object-cover" />
+                            <span v-else>{{ userInitial }}</span>
                         </button>
 
                         <Transition enter-from-class="opacity-0 scale-95 translate-y-1" enter-active-class="transition duration-150 ease-out" leave-to-class="opacity-0 scale-95 translate-y-1" leave-active-class="transition duration-100 ease-in">

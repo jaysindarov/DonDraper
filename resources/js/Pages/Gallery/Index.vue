@@ -79,10 +79,10 @@ function meaningfulAttrs(attrs) {
             <div class="flex items-center justify-between">
                 <h2 class="text-base font-bold text-white">Community Gallery</h2>
                 <select v-model="typeFilter" @change="applyFilter"
-                    class="bg-white/4 border border-white/8 hover:border-white/15 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500/40 transition-all cursor-pointer">
-                    <option value="">All Types</option>
-                    <option value="image">Images</option>
-                    <option value="video">Videos</option>
+                    class="bg-[#0A0E1A] border border-white/8 hover:border-white/15 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500/40 transition-all cursor-pointer">
+                    <option value="" class="bg-[#0A0E1A] text-white">All Types</option>
+                    <option value="image" class="bg-[#0A0E1A] text-white">Images</option>
+                    <option value="video" class="bg-[#0A0E1A] text-white">Videos</option>
                 </select>
             </div>
         </template>
