@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [UserApiController::class, 'me']);
 
-    Route::prefix('v1')->middleware(['plan:pro,enterprise'])->group(function () {
+    Route::prefix('v1')->middleware(['plan:pro,enterprise', 'throttle:60,1'])->group(function () {
         // Generations
         Route::get('/generations', [GenerationApiController::class, 'index']);
         Route::post('/generations', [GenerationApiController::class, 'store']);

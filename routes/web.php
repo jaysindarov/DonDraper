@@ -32,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/gallery', [GalleryController::class, 'index'])->name('gallery');
     Route::get('/dashboard', function () {
         $imageModels = collect(config('ai_models'))
+            ->except('video_models')
             ->map(fn ($cfg, $id) => [
                 'id'          => $id,
                 'label'       => $cfg['label'],
@@ -41,11 +42,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ])
             ->values();
 
-        $videoModels = collect([
-            ['id' => 'veo-3.1',         'label' => 'Veo 3.1',     'provider' => 'Google',     'description' => 'Google Veo 3.1. Cinematic quality video.',       'recommended' => true],
-            ['id' => 'sora-1',          'label' => 'Sora',        'provider' => 'OpenAI',     'description' => 'OpenAI Sora. Creative, high-fidelity video.',    'recommended' => false],
-            ['id' => 'elevenlabs-video', 'label' => 'ElevenLabs', 'provider' => 'ElevenLabs', 'description' => 'ElevenLabs video generation with audio support.', 'recommended' => false],
-        ]);
+        $videoModels = collect(config('ai_models.video_models'))
+            ->map(fn ($cfg, $id) => [
+                'id'          => $id,
+                'label'       => $cfg['label'],
+                'provider'    => $cfg['provider'],
+                'description' => $cfg['description'],
+                'recommended' => $cfg['recommended'] ?? false,
+            ])
+            ->values();
 
         return Inertia::render('Dashboard', [
             'recentGenerations' => auth()->user()->generations()->latest()->limit(9)->get(),

@@ -21,6 +21,15 @@
 
 return [
 
+    // ── Video Models ─────────────────────────────────────────────────────────
+    // Centralised video model list — referenced by controllers and routes.
+
+    'video_models' => [
+        'veo-3.1'          => ['label' => 'Veo 3.1',     'provider' => 'Google',     'description' => 'Google Veo 3.1. Cinematic quality video.',       'recommended' => true],
+        'sora-1'           => ['label' => 'Sora',        'provider' => 'OpenAI',     'description' => 'OpenAI Sora. Creative, high-fidelity video.',    'recommended' => false],
+        'elevenlabs-video' => ['label' => 'ElevenLabs',  'provider' => 'ElevenLabs', 'description' => 'ElevenLabs video generation with audio support.', 'recommended' => false],
+    ],
+
     // ── OpenAI ────────────────────────────────────────────────────────────────
 
     'gpt-image-1' => [

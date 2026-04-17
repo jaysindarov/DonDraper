@@ -104,6 +104,11 @@ class TeamController extends Controller
 
         $user = auth()->user();
 
+        // Ensure the authenticated user's email matches the invitation
+        if ($invitation->email !== $user->email) {
+            abort(403, 'This invitation was sent to a different email address.');
+        }
+
         if (!$invitation->team->members()->where('user_id', $user->id)->exists()) {
             $invitation->team->members()->attach($user->id, ['role' => 'member']);
         }

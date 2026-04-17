@@ -50,12 +50,42 @@ class User extends Authenticatable
         return $this->belongsTo(Team::class, 'current_team_id');
     }
 
-    public function deductCredits(int $amount = 1): bool
+    public function creditTransactions()
+    {
+        return $this->hasMany(CreditTransaction::class);
+    }
+
+    public function deductCredits(int $amount = 1, ?int $generationId = null, ?string $description = null): bool
     {
         if ($this->credits < $amount) {
             return false;
         }
         $this->decrement('credits', $amount);
+
+        CreditTransaction::create([
+            'user_id'       => $this->id,
+            'team_id'       => $this->current_team_id,
+            'generation_id' => $generationId,
+            'type'          => 'debit',
+            'amount'        => -$amount,
+            'balance_after' => $this->fresh()->credits,
+            'description'   => $description ?? "Generation credit deduction",
+        ]);
+
         return true;
+    }
+
+    public function addCredits(int $amount, string $type = 'topup', ?string $description = null): void
+    {
+        $this->increment('credits', $amount);
+
+        CreditTransaction::create([
+            'user_id'       => $this->id,
+            'team_id'       => $this->current_team_id,
+            'type'          => $type,
+            'amount'        => $amount,
+            'balance_after' => $this->fresh()->credits,
+            'description'   => $description ?? "Credits added ({$type})",
+        ]);
     }
 }

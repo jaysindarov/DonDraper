@@ -6,16 +6,20 @@ use App\Exceptions\NonRetryableException;
 use App\Models\Generation;
 use App\Services\ImageGeneration\GenerationResult;
 use App\Services\ImageGeneration\ImageStorageService;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Files\Image as AiImage;
+use Laravel\Ai\Image;
 
 /**
- * Handles gpt-image-1 generations.
+ * Handles gpt-image-1 generations via the Laravel AI SDK (openai driver).
  *
- * Uses the edits endpoint when any visual reference (person or product) is present —
- * the model sees the actual image bytes rather than a text description, which is
- * significantly more accurate. Falls back to the generations endpoint for text-only.
+ * When visual references (person or product) are present the SDK routes the
+ * request to the images/edits endpoint automatically — any non-empty attachments
+ * array triggers it. Without references, images/generations is used instead.
+ *
+ * The "anchored prompt" prepended when editing ensures the model knows exactly
+ * which attached images are the product to reproduce vs. the person to match.
  */
 class OpenAiGptImageProvider extends BaseImageProvider
 {
@@ -30,20 +34,33 @@ class OpenAiGptImageProvider extends BaseImageProvider
 
     public function generate(Generation $generation, string $prompt, array $modelConfig): GenerationResult
     {
-        $hasPersons  = !empty($generation->reference_persons ?? []);
-        $hasProduct  = !empty($generation->allProductImagePaths());
+        $attachments = $this->buildSdkAttachments($generation);
+        $hasAttachments = !empty($attachments);
 
-        // Use the edits endpoint whenever ANY visual reference exists (persons OR product).
-        // The edits endpoint physically sends the image bytes to the model so it can SEE
-        // the actual product/face — not guess from a text description.
-        // Without this, product-only generations fall back to text-only and lose ~30% accuracy.
-        $b64 = ($hasPersons || $hasProduct)
-            ? $this->generateViaEditsEndpoint($generation, $prompt, $modelConfig)
-            : $this->generateViaGenerationsEndpoint($generation, $prompt, $modelConfig);
+        $finalPrompt = $hasAttachments
+            ? $this->buildAnchoredPrompt($prompt, $attachments, $generation)
+            : $prompt;
 
-        $localUrl = $this->storage->storeFromBase64($generation->id, $b64);
+        try {
+            $response = Image::of($finalPrompt)
+                ->attachments($attachments)
+                ->quality($this->resolveQuality($generation, $modelConfig))
+                ->size($this->resolveSize($generation, $modelConfig))
+                ->timeout(150)
+                ->generate('openai', 'gpt-image-1');
+        } catch (RequestException $e) {
+            $this->handleRequestException($e, 'gpt-image-1');
+        }
 
-        return GenerationResult::completed($localUrl);
+        $b64 = $response->firstImage()->image;
+
+        if (empty($b64)) {
+            throw new NonRetryableException('gpt-image-1 returned an empty result.');
+        }
+
+        return GenerationResult::completed(
+            $this->storage->storeFromBase64($generation->id, $b64)
+        );
     }
 
     public function poll(Generation $generation, string $predictionId): GenerationResult
@@ -51,57 +68,74 @@ class OpenAiGptImageProvider extends BaseImageProvider
         throw new \LogicException('OpenAiGptImageProvider is synchronous and does not support polling.');
     }
 
-    // ── Edits endpoint (accepts real reference images for accurate likenesses) ─
-
-    private function generateViaEditsEndpoint(Generation $generation, string $prompt, array $modelConfig): string
-    {
-        ['parts' => $parts, 'productCount' => $productCount, 'hasPersons' => $hasPersons]
-            = $this->buildReferenceImageParts($generation);
-
-        if (empty($parts)) {
-            // No valid images on disk — fall back to text-only
-            return $this->generateViaGenerationsEndpoint($generation, $prompt, $modelConfig);
-        }
-
-        // Prepend an explicit anchor so the model knows what role each attached image plays.
-        // Without this, gpt-image-1 may treat product images as scenery rather than
-        // the primary subject to reproduce with exact accuracy.
-        $anchoredPrompt = $this->buildAnchoredPrompt($prompt, $productCount, $hasPersons, $generation);
-
-        $parts[] = ['name' => 'model',   'contents' => 'gpt-image-1'];
-        $parts[] = ['name' => 'prompt',  'contents' => $anchoredPrompt];
-        $parts[] = ['name' => 'n',       'contents' => '1'];
-        $parts[] = ['name' => 'size',    'contents' => $this->resolveSize($generation, $modelConfig)];
-        $parts[] = ['name' => 'quality', 'contents' => $this->resolveQuality($generation, $modelConfig)];
-
-        $response = Http::withHeaders(['Authorization' => 'Bearer ' . config('services.openai.key')])
-            ->timeout(150)
-            ->asMultipart()
-            ->post(config('services.openai.base_url') . '/images/edits', $parts);
-
-        return $this->extractB64($response, 'gpt-image-1 edits');
-    }
+    // ── Attachment building ───────────────────────────────────────────────────
 
     /**
-     * Prepend an explicit role declaration for each attached image group so the
+     * Build the ordered list of SDK attachments for the edits endpoint.
+     *
+     * Product images come first (multiple angles = higher accuracy), then
+     * person reference images. The model weights earlier attachments more heavily,
+     * so products are the primary visual anchor.
+     *
+     * @return AiImage[]
+     */
+    private function buildSdkAttachments(Generation $generation): array
+    {
+        $attachments = [];
+
+        // All product angles first
+        foreach ($generation->allProductImagePaths() as $path) {
+            if (Storage::disk('public')->exists($path)) {
+                $attachments[] = AiImage::fromStorage($path, 'public');
+            }
+        }
+
+        // Person references after products
+        foreach ($generation->reference_persons ?? [] as $person) {
+            $path = $person['path'] ?? null;
+            if ($path && Storage::disk('public')->exists($path)) {
+                $attachments[] = AiImage::fromStorage($path, 'public');
+            }
+        }
+
+        return $attachments;
+    }
+
+    // ── Anchored prompt ───────────────────────────────────────────────────────
+
+    /**
+     * Prepend explicit role declarations for each attached image group so the
      * model treats product images as exact reproduction targets, not style hints.
+     *
+     * Without this, gpt-image-1 may treat product images as scenery rather than
+     * the primary subject to reproduce with 100% fidelity.
+     *
+     * @param  AiImage[]  $attachments
      */
     private function buildAnchoredPrompt(
         string $prompt,
-        int $productCount,
-        bool $hasPersons,
+        array $attachments,
         Generation $generation,
     ): string {
+        $productCount = count($generation->allProductImagePaths());
+        $hasPersons   = !empty($generation->reference_persons ?? []);
+
+        // Only count attachments that made it onto disk (some may have been skipped)
+        $resolvedProductCount = min(
+            $productCount,
+            count($attachments) - ($hasPersons ? count($generation->reference_persons ?? []) : 0)
+        );
+
         $anchors = [];
 
-        if ($productCount > 0) {
+        if ($resolvedProductCount > 0) {
             $type      = $generation->product_type ? " ({$generation->product_type})" : '';
-            $imageWord = $productCount === 1 ? 'image' : 'images';
-            $angleNote = $productCount > 1
-                ? " The {$productCount} product images show it from different angles — use all views to understand its full 3D appearance."
+            $imageWord = $resolvedProductCount === 1 ? 'image' : 'images';
+            $angleNote = $resolvedProductCount > 1
+                ? " The {$resolvedProductCount} product images show it from different angles — use all views to understand its full 3D appearance."
                 : '';
 
-            $anchors[] = "PRODUCT REFERENCE: The first {$productCount} attached {$imageWord} show{$angleNote} the exact product{$type}. "
+            $anchors[] = "PRODUCT REFERENCE: The first {$resolvedProductCount} attached {$imageWord} show{$angleNote} the exact product{$type}. "
                 . 'Match its precise shape, colors, logo placement, lens tint, and finish with 100% visual fidelity. '
                 . 'CRITICAL: The product must appear WORN BY or naturally HELD BY the model(s) in the scene — '
                 . 'NEVER as a separate floating object, cutout, ghost image, or product-shot layer placed on top of the scene. '
@@ -109,7 +143,9 @@ class OpenAiGptImageProvider extends BaseImageProvider
         }
 
         if ($hasPersons) {
-            $personWord = $productCount > 0 ? 'The remaining reference image(s)' : 'The attached reference image(s)';
+            $personWord = $resolvedProductCount > 0
+                ? 'The remaining reference image(s)'
+                : 'The attached reference image(s)';
             $anchors[] = "PERSON REFERENCE: {$personWord} show the person(s) whose exact facial identity must be matched precisely.";
         }
 
@@ -120,111 +156,43 @@ class OpenAiGptImageProvider extends BaseImageProvider
         return implode(' ', $anchors) . ' ' . $prompt;
     }
 
+    // ── Resolution / quality helpers ──────────────────────────────────────────
+
     /**
-     * Build the multipart image parts for the edits endpoint.
-     *
-     * All product images come first (multiple angles = more accuracy), then
-     * person reference images. Ordering matters: the model treats earlier
-     * images as more dominant visual references.
-     *
-     * @return array{parts: array, productCount: int, hasPersons: bool}
+     * Return the pixel size string for the API payload.
+     * The SDK's OpenAI gateway passes raw values through via its default → $size branch.
      */
-    private function buildReferenceImageParts(Generation $generation): array
-    {
-        $parts        = [];
-        $productCount = 0;
-        $hasPersons   = false;
-
-        // All product images first (front, side, back, detail — whatever was uploaded)
-        foreach ($generation->allProductImagePaths() as $path) {
-            if (Storage::disk('public')->exists($path)) {
-                $parts[] = [
-                    'name'     => 'image[]',
-                    'contents' => Storage::disk('public')->get($path),
-                    'filename' => basename($path),
-                    'headers'  => ['Content-Type' => Storage::disk('public')->mimeType($path) ?: 'image/jpeg'],
-                ];
-                $productCount++;
-            }
-        }
-
-        // Person reference images after the product
-        foreach ($generation->reference_persons ?? [] as $person) {
-            $path = $person['path'] ?? null;
-            if ($path && Storage::disk('public')->exists($path)) {
-                $parts[] = [
-                    'name'     => 'image[]',
-                    'contents' => Storage::disk('public')->get($path),
-                    'filename' => basename($path),
-                    'headers'  => ['Content-Type' => Storage::disk('public')->mimeType($path) ?: 'image/jpeg'],
-                ];
-                $hasPersons = true;
-            }
-        }
-
-        return ['parts' => $parts, 'productCount' => $productCount, 'hasPersons' => $hasPersons];
-    }
-
-    // ── Generations endpoint (text-only) ──────────────────────────────────────
-
-    private function generateViaGenerationsEndpoint(Generation $generation, string $prompt, array $modelConfig): string
-    {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.openai.key'),
-            'Content-Type'  => 'application/json',
-        ])->timeout(150)->post(config('services.openai.base_url') . '/images/generations', [
-            'model'   => 'gpt-image-1',
-            'prompt'  => $prompt,
-            'n'       => 1,
-            'size'    => $this->resolveSize($generation, $modelConfig),
-            'quality' => $this->resolveQuality($generation, $modelConfig),
-        ]);
-
-        return $this->extractB64($response, 'gpt-image-1');
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
     private function resolveSize(Generation $generation, array $modelConfig): string
     {
         $requested = ($generation->attributes ?? [])['resolution'] ?? null;
-        $valid      = $modelConfig['sizes'] ?? [];
-        $default    = $modelConfig['defaults']['size'] ?? '1024x1024';
+        $valid     = $modelConfig['sizes'] ?? [];
+        $default   = $modelConfig['defaults']['size'] ?? '1024x1024';
 
-        return ($requested && in_array($requested, $valid)) ? $requested : $default;
+        return ($requested && in_array($requested, $valid, strict: true)) ? $requested : $default;
     }
 
     /**
      * Map UI quality values to gpt-image-1 API values (low / medium / high).
-     * UI: standard → medium, hd → high, ultra_hd → high.
+     *
+     * UI quality → API quality:
+     *   standard  → medium
+     *   hd        → high
+     *   ultra_hd  → high
      */
     private function resolveQuality(Generation $generation, array $modelConfig): string
     {
-        $uiQuality = ($generation->attributes ?? [])['quality'] ?? null;
-
         $map = [
-            'standard'  => 'medium',
-            'hd'        => 'high',
-            'ultra_hd'  => 'high',
+            'standard' => 'medium',
+            'hd'       => 'high',
+            'ultra_hd' => 'high',
         ];
+
+        $uiQuality = ($generation->attributes ?? [])['quality'] ?? null;
 
         if ($uiQuality && isset($map[$uiQuality])) {
             return $map[$uiQuality];
         }
 
         return $modelConfig['defaults']['quality'] ?? 'high';
-    }
-
-    private function extractB64(Response $response, string $context): string
-    {
-        $this->assertHttpSuccess($response, $context);
-
-        $b64 = $response->json('data.0.b64_json');
-
-        if (empty($b64)) {
-            throw new NonRetryableException("{$context} returned empty result");
-        }
-
-        return $b64;
     }
 }

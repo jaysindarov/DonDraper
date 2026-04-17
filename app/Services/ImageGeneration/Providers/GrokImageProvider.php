@@ -2,22 +2,25 @@
 
 namespace App\Services\ImageGeneration\Providers;
 
+use App\Exceptions\NonRetryableException;
 use App\Models\Generation;
 use App\Services\ImageGeneration\GenerationResult;
 use App\Services\ImageGeneration\ImageStorageService;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\RequestException;
+use Laravel\Ai\Image;
 
 /**
  * xAI Grok image generation provider.
  *
- * OpenAI-compatible endpoint hosted by xAI.
- * API credentials: GROK_API_KEY must be set in your .env file.
+ * Delegates the HTTP transport to the Laravel AI SDK (xai driver) so all
+ * retry logic, rate-limit handling, and credential resolution happen in one
+ * place. The model slug and API key are read from config/ai.php (xai driver)
+ * which maps to the GROK_API_KEY env var — the same key used by services.grok.
+ *
  * Docs: https://docs.x.ai/api/image-generation
  */
 class GrokImageProvider extends BaseImageProvider
 {
-    private const API_BASE = 'https://api.x.ai/v1';
-
     public function __construct(
         private readonly ImageStorageService $storage,
     ) {}
@@ -32,30 +35,23 @@ class GrokImageProvider extends BaseImageProvider
         $grokModel = $modelConfig['grok_model']
             ?? throw new \InvalidArgumentException('Missing grok_model in model config.');
 
-        $apiKey = config('services.grok.key')
-            ?? throw new \RuntimeException('GROK_API_KEY is not configured.');
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type'  => 'application/json',
-        ])->timeout(120)->post(self::API_BASE . '/images/generations', [
-            'model'           => $grokModel,
-            'prompt'          => $prompt,
-            'n'               => 1,
-            'response_format' => 'b64_json',
-        ]);
-
-        $this->assertHttpSuccess($response, "Grok ({$grokModel})");
-
-        $b64 = $response->json('data.0.b64_json');
-
-        if (empty($b64)) {
-            throw new NonRetryableException("Grok ({$grokModel}) returned empty result");
+        try {
+            $response = Image::of($prompt)
+                ->timeout(120)
+                ->generate('xai', $grokModel);
+        } catch (RequestException $e) {
+            $this->handleRequestException($e, "Grok ({$grokModel})");
         }
 
-        $localUrl = $this->storage->storeFromBase64($generation->id, $b64);
+        $b64 = $response->firstImage()->image;
 
-        return GenerationResult::completed($localUrl);
+        if (empty($b64)) {
+            throw new NonRetryableException("Grok ({$grokModel}) returned an empty result.");
+        }
+
+        return GenerationResult::completed(
+            $this->storage->storeFromBase64($generation->id, $b64)
+        );
     }
 
     public function poll(Generation $generation, string $predictionId): GenerationResult

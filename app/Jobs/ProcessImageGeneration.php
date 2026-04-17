@@ -6,6 +6,7 @@ use App\Exceptions\NonRetryableException;
 use App\Models\Generation;
 use App\Services\ImageGeneration\ImageProviderFactory;
 use App\Services\ImageGeneration\PromptBuilder;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Queue\Queueable;
@@ -36,7 +37,7 @@ class ProcessImageGeneration implements ShouldQueue
         public readonly Generation $generation,
     ) {}
 
-    public function retryUntil(): \DateTime
+    public function retryUntil(): CarbonInterface
     {
         return now()->addMinutes(10);
     }
@@ -54,7 +55,7 @@ class ProcessImageGeneration implements ShouldQueue
             return;
         }
 
-        $model    = $this->generation->model ?? 'gpt-image-1';
+        $model    = $this->generation->model;
         $config   = $factory->configFor($model);
         $provider = $factory->make($model);
 
@@ -183,7 +184,7 @@ class ProcessImageGeneration implements ShouldQueue
             $steps[]         = ['label' => $label, 'status' => $status];
             $current['steps'] = $steps;
             $this->generation->update(['metadata' => $current]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Generation metadata update failed', ['id' => $this->generation->id, 'error' => $e->getMessage()]); }
     }
 
     private function completeStep(): void
@@ -196,7 +197,7 @@ class ProcessImageGeneration implements ShouldQueue
             }
             $current['steps'] = $steps;
             $this->generation->update(['metadata' => $current]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Generation metadata update failed', ['id' => $this->generation->id, 'error' => $e->getMessage()]); }
     }
 
     private function failStep(): void
@@ -209,7 +210,7 @@ class ProcessImageGeneration implements ShouldQueue
             }
             $current['steps'] = $steps;
             $this->generation->update(['metadata' => $current]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Generation metadata update failed', ['id' => $this->generation->id, 'error' => $e->getMessage()]); }
     }
 
     private function clearSteps(): void
@@ -218,7 +219,7 @@ class ProcessImageGeneration implements ShouldQueue
             $current          = $this->generation->fresh()->metadata ?? [];
             $current['steps'] = [];
             $this->generation->update(['metadata' => $current]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Generation metadata update failed', ['id' => $this->generation->id, 'error' => $e->getMessage()]); }
     }
 
     /** Merge a key into metadata without overwriting other keys (e.g. steps). */
@@ -227,7 +228,7 @@ class ProcessImageGeneration implements ShouldQueue
         try {
             $current = $this->generation->fresh()->metadata ?? [];
             $this->generation->update(['metadata' => array_merge($current, $data)]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Generation metadata update failed', ['id' => $this->generation->id, 'error' => $e->getMessage()]); }
     }
 
     // ── Status helpers ────────────────────────────────────────────────────────
@@ -247,6 +248,6 @@ class ProcessImageGeneration implements ShouldQueue
                 'status'        => 'failed',
                 'error_message' => substr($message, 0, 500),
             ]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Generation metadata update failed', ['id' => $this->generation->id, 'error' => $e->getMessage()]); }
     }
 }

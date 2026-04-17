@@ -2,6 +2,7 @@
 
 namespace App\Services\ImageGeneration\Providers;
 
+use App\Exceptions\NonRetryableException;
 use App\Models\Generation;
 use App\Services\ImageGeneration\GenerationResult;
 use App\Services\ImageGeneration\ImageStorageService;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Http;
  */
 class GoogleImageProvider extends BaseImageProvider
 {
-    private const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+    private const API_BASE = 'https://generativelanguage.googleapis.com/v1beta'; // this could be wrong, you better check it
 
     public function __construct(
         private readonly ImageStorageService $storage,

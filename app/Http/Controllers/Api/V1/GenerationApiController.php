@@ -2,58 +2,83 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ImageProvider;
+use App\Enums\VideoProvider;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\StoreGenerationRequest;
 use App\Jobs\ProcessImageGeneration;
 use App\Jobs\ProcessVideoGeneration;
 use App\Models\Generation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class GenerationApiController extends Controller
 {
     public function index(Request $request)
     {
-        $generations = $request->user()
-            ->generations()
-            ->latest()
-            ->paginate(20);
-
-        return response()->json($generations);
+        return response()->json(
+            $request->user()->generations()->latest()->paginate(20)
+        );
     }
 
-    public function store(Request $request)
+    public function store(StoreGenerationRequest $request)
     {
-        $validated = $request->validate([
-            'type'            => 'required|in:image,video',
-            'prompt'          => 'required|string|max:2000',
-            'negative_prompt' => 'nullable|string|max:1000',
-            'attributes'      => 'nullable|array',
-        ]);
-
+        $validated  = $request->validated();
         $user       = $request->user();
         $isVideo    = $validated['type'] === 'video';
         $creditCost = $isVideo ? 5 : 1;
 
-        if ($user->credits < $creditCost) {
-            return response()->json([
-                'message' => "Insufficient credits. This generation costs {$creditCost} credits.",
-            ], 422);
+        // Resolve model
+        $validImageModels = array_keys(array_diff_key(config('ai_models'), ['video_models' => true]));
+        $validVideoModels = array_keys(config('ai_models.video_models'));
+
+        $requestedModel = $validated['model'] ?? null;
+        if ($isVideo) {
+            $model = in_array($requestedModel, $validVideoModels) ? $requestedModel : 'veo-3.1';
+        } else {
+            $model = in_array($requestedModel, $validImageModels) ? $requestedModel : 'gpt-image-1';
         }
 
-        $attributes = $validated['attributes'] ?? [];
-        $model      = $attributes['model'] ?? ($isVideo ? 'veo-3.1' : 'gpt-image-1');
+        $provider = $isVideo
+            ? VideoProvider::fromModel($model)->value
+            : ImageProvider::fromModel($model)->value;
 
-        $generation = $user->generations()->create([
-            'type'           => $validated['type'],
-            'prompt'         => $validated['prompt'],
-            'negative_prompt' => $validated['negative_prompt'] ?? null,
-            'model'          => $model,
-            'provider'       => $isVideo ? 'google' : 'openai',
-            'attributes'     => $attributes,
-            'status'         => 'pending',
-            'credits_used'   => $creditCost,
-        ]);
+        try {
+            $generation = DB::transaction(function () use ($user, $validated, $model, $provider, $creditCost, $isVideo) {
+                $user = $user->lockForUpdate()->refresh();
 
-        $user->deductCredits($creditCost);
+                $effectiveCredits = $user->current_team_id
+                    ? ($user->currentTeam?->credits ?? 0)
+                    : $user->credits;
+
+                if ($effectiveCredits < $creditCost) {
+                    throw new \RuntimeException("Insufficient credits. This generation costs {$creditCost} credits.");
+                }
+
+                $generation = $user->generations()->create([
+                    'type'            => $validated['type'],
+                    'prompt'          => $validated['prompt'],
+                    'negative_prompt' => $validated['negative_prompt'] ?? null,
+                    'product_type'    => $validated['product_type'] ?? null,
+                    'model'           => $model,
+                    'provider'        => $provider,
+                    'attributes'      => $validated['attributes'] ?? [],
+                    'status'          => 'pending',
+                    'credits_used'    => $creditCost,
+                    'team_id'         => $user->current_team_id,
+                ]);
+
+                if ($user->current_team_id && $user->currentTeam) {
+                    $user->currentTeam->deductCredits($creditCost);
+                } else {
+                    $user->deductCredits($creditCost);
+                }
+
+                return $generation;
+            }, attempts: 3);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         if ($isVideo) {
             ProcessVideoGeneration::dispatch($generation)->onQueue('video');

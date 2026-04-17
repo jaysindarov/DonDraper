@@ -25,7 +25,7 @@ enum VideoProvider: string
             str_starts_with($model, 'sora')       => self::OpenAi,
             str_starts_with($model, 'elevenlabs') => self::ElevenLabs,
             str_starts_with($model, 'veo')        => self::Google,
-            default                               => self::OpenAi,
+            default => throw new \InvalidArgumentException("Unknown video model: {$model}"),
         };
     }
 }
